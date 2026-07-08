@@ -8,12 +8,15 @@ import type { RehabLevel, RepairCategory, RepairLevel } from '@/lib/types';
 /* --------------------------- Provider config ---------------------------- */
 
 /**
- * When true (default), the app runs on the deterministic mock provider so the
- * autopilot flow works with zero API keys. Real licensed adapters take over
- * when their env keys are present (see data-providers/index.ts).
+ * DealMachine comps request tuning. Radius/timeframe kept tight so comps stay
+ * genuinely comparable; widen deliberately per market, never silently.
  */
-export const USE_MOCK_PROVIDER =
-  process.env.JARVIS_USE_MOCK_PROVIDER !== 'false';
+export const DEALMACHINE_RULES = {
+  radiusMiles: 1,
+  timeframe: '12months',
+  sortBy: 'match',
+  limit: 25,
+} as const;
 
 /* ---------------------------- Repair costs ------------------------------ */
 

@@ -9,7 +9,7 @@ import type {
 } from '@/lib/data-providers/providerTypes';
 import type { AnalysisInput, CompInput } from '@/lib/types';
 
-// These run against the default mock provider (JARVIS_USE_MOCK_PROVIDER unset).
+// The mock bundle is injected explicitly — the resolver never returns mock.
 const asOf = '2026-07-08T00:00:00.000Z';
 
 const inertComps: ComparableSalesProvider = {
@@ -52,14 +52,13 @@ const manualSold: CompInput[] = [
   { address: '3 Comp St', soldPrice: 290000, soldDate: '2026-03-20', sqft: 1450, status: 'sold' },
 ];
 
-describe('runPropertyAnalysis (mock mode)', () => {
+describe('runPropertyAnalysis (injected mock bundle)', () => {
   it('surfaces the mock-data warning across result, memo, and confidence', async () => {
     const result = await runPropertyAnalysis(
       { address: { fullAddress: '123 Main St, Austin, TX 78701' }, repairs: { rehabLevel: 'medium' } },
-      { asOf },
+      { asOf, providers: createMockBundle() },
     );
     expect(result.usedMockProvider).toBe(true);
-    expect(result.providerStatus.mockProviderEnabled).toBe(true);
     expect(result.warnings.join(' ')).toMatch(/mock/i);
     expect(result.memo.plainText).toMatch(/testing only/i);
     expect(result.confidence.summary).toMatch(/testing only/i);
@@ -68,7 +67,7 @@ describe('runPropertyAnalysis (mock mode)', () => {
   it('produces a source audit that is all-mock, and a memo Data Sources section', async () => {
     const result = await runPropertyAnalysis(
       { address: { fullAddress: '123 Main St, Austin, TX 78701' }, repairs: { rehabLevel: 'medium' } },
-      { asOf },
+      { asOf, providers: createMockBundle() },
     );
     expect(result.sourceAudit.length).toBeGreaterThan(0);
     expect(result.sourceAudit.every((a) => a.mock)).toBe(true);
@@ -82,15 +81,15 @@ describe('runPropertyAnalysis (mock mode)', () => {
   it('keeps subject-to non-viable when no loan data is provided', async () => {
     const result = await runPropertyAnalysis(
       { address: { fullAddress: '55 Oak Ave, Dallas, TX 75201' }, repairs: { rehabLevel: 'light' } },
-      { asOf },
+      { asOf, providers: createMockBundle() },
     );
     expect(result.offers.subject_to.viable).toBe(false);
   });
 
   it('is deterministic for the same address (seeded mock)', async () => {
     const input: AnalysisInput = { address: { fullAddress: '9 Repeat Rd, Austin, TX 78701' }, repairs: { rehabLevel: 'medium' } };
-    const a = await runPropertyAnalysis(input, { asOf });
-    const b = await runPropertyAnalysis(input, { asOf });
+    const a = await runPropertyAnalysis(input, { asOf, providers: createMockBundle() });
+    const b = await runPropertyAnalysis(input, { asOf, providers: createMockBundle() });
     expect(a.arv.conservative).toBe(b.arv.conservative);
   });
 });

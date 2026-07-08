@@ -74,6 +74,8 @@ export interface ArvResult {
   /** 0–100. */
   confidence: number;
   qualifiedCompCount: number;
+  /** How many qualified comps carry an affirmatively RECORDED sale price. */
+  recordedQualifiedCount?: number;
   usedCompCount: number;
   explanation: string;
   warnings: string[];

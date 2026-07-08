@@ -7,6 +7,7 @@
 /** Provenance of a piece of data — drives trust, confidence, and compliance. */
 export type DataSource =
   | 'mock_provider'
+  | 'dealmachine'
   | 'licensed_property_api'
   | 'licensed_comps_api'
   | 'public_records_api'
@@ -70,6 +71,8 @@ export interface SubjectProperty {
   condition: PropertyCondition;
   /** Provider guess of current value (AVM-style), if available. */
   providerValueEstimate?: number;
+  /** Provider-specific record ids (e.g. { dealmachine: "prop_123" }). */
+  externalIds?: Record<string, string>;
   sources: DataSource[];
 }
 
@@ -85,6 +88,12 @@ export interface Comp {
   /** ISO date of sale (sold) or list date (active/pending). */
   date: string;
   distanceMiles: number;
+  /**
+   * Recorder/deed sale-type text when the provider supplies it (e.g.
+   * "Full amount stated on Document."). Drives the non-disclosure /
+   * modeled-price detection — absent means the price is NOT known-recorded.
+   */
+  saleType?: string;
   source: DataSource;
 }
 

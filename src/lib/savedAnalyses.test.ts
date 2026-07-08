@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { runPropertyAnalysis } from './analysis/runPropertyAnalysis';
+import { createMockBundle } from './data-providers/mockProvider';
 import {
   deserializeSaved,
   serializeSaved,
@@ -13,7 +14,7 @@ describe('savedAnalyses serialization', () => {
   it('summarizes a result into the compact card shape', async () => {
     const result = await runPropertyAnalysis(
       { address: { fullAddress: '1 Test St, Dallas, TX 75201' }, repairs: { rehabLevel: 'light' } },
-      { asOf },
+      { asOf, providers: createMockBundle() },
     );
     const summary = summarizeResult(result, 'abc', asOf);
     expect(summary.id).toBe('abc');
@@ -27,7 +28,7 @@ describe('savedAnalyses serialization', () => {
   it('round-trips through serialize/deserialize', async () => {
     const result = await runPropertyAnalysis(
       { address: { fullAddress: '1 Test St, Dallas, TX 75201' }, repairs: { rehabLevel: 'light' } },
-      { asOf },
+      { asOf, providers: createMockBundle() },
     );
     const items: SavedAnalysis[] = [{ summary: summarizeResult(result, 'abc', asOf), result }];
     const round = deserializeSaved(serializeSaved(items));

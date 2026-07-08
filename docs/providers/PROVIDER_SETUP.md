@@ -34,79 +34,49 @@ hosting:
   `next build` + `next start`, or any Node host) where env vars stay server-side.
 - **Never put an API key in a `NEXT_PUBLIC_*` variable.** Those are inlined into
   the client bundle and would be publicly exposed. Provider keys
-  (`ATTOM_API_KEY`, etc.) are read only on the server and must never be prefixed
+  (`DEALMACHINE_API_KEY`, etc.) are read only on the server and must never be prefixed
   `NEXT_PUBLIC_`.
 
 ## Modes
 
-The resolver (`src/lib/data-providers/index.ts`) supports exactly three modes:
+There is **no sample/mock mode in the server app**: real providers or an honest
+error. The resolver (`src/lib/data-providers/index.ts`) supports:
 
-### Mode A — Mock (default)
+### Real providers (the only server mode)
 ```
-JARVIS_USE_MOCK_PROVIDER=true
+DEALMACHINE_API_KEY=dm_sk_live_...
 ```
-Runs entirely on the deterministic mock provider. No network calls. A loud
-"Mock Data" warning is shown throughout the UI and deal memo.
+DealMachine fills property facts, comparable sales, public records, and a
+supporting value estimate. Slots with no configured provider stay inert with a
+warning (e.g. rent). Missing comps → the analysis fails cleanly with an
+"insufficient comparable data" error — no fabricated comps, ever.
 
-### Mode B — Real providers
-```
-JARVIS_USE_MOCK_PROVIDER=false
-# + at least one real provider configured (see below)
-```
-Uses each configured licensed provider. Unconfigured slots are left **inert**
-(they supply nothing) — the app never silently falls back to mock data. Missing
-optional data degrades gracefully with warnings:
+### Nothing configured
+Clean error:
+> No real data provider is configured. Set DEALMACHINE_API_KEY (or configure another licensed data provider).
 
-- **No rent provider** → subject-to and creative-finance cash-flow confidence
-  drops, with a warning.
-- **No comps provider** (and no manual comps) → the analysis fails cleanly with
-  an "insufficient comparable data" error.
-- **No public-records provider** → a warning is shown, but the analysis
-  continues.
-- **No external-valuation provider** → no problem; valuations are optional
-  supporting context.
-
-### Mode C — Invalid production
-```
-JARVIS_USE_MOCK_PROVIDER=false
-# and NO real provider configured
-```
-Returns a clean error:
-> No real data provider is configured. Enable mock mode for testing or configure a licensed data provider.
+### GitHub Pages demo (the only simulated surface)
+The static demo build (`NEXT_PUBLIC_GITHUB_PAGES=true`) pins the deterministic
+mock bundle in-browser and labels everything "static public demo / mock data
+only." The server resolver can never return mock data.
 
 ## Environment variables
 
 ```bash
-JARVIS_USE_MOCK_PROVIDER=true   # true = mock; false = real providers
-ATTOM_API_KEY=                  # subject facts + AVM (ATTOM)
-MLS_API_KEY=                    # comparable sales (MLS/RESO)
-RENT_PROVIDER_API_KEY=          # rent estimates
-COUNTY_PROVIDER_API_KEY=        # county / public records
-```
-
-Optional future variables — a provider is considered *configured* once its API
-key is present, but **no real call is made until its base URL is also set**:
-
-```bash
-ATTOM_BASE_URL=
-MLS_BASE_URL=
+DEALMACHINE_API_KEY=      # DealMachine: property, comps, records, value estimate
+RENT_PROVIDER_API_KEY=    # optional future rent provider
 RENT_PROVIDER_BASE_URL=
-COUNTY_PROVIDER_BASE_URL=
+ANTHROPIC_API_KEY=        # Claude: paste-parsing + memo prose (never numbers)
+DATABASE_URL="file:./dev.db"
 ```
-
-Copy `.env.example` to `.env.local` and fill in the values you have. Restart the
-dev/prod server after changing env. View live status at **`/settings/providers`**.
 
 ## Providers and what they supply
 
 | Provider (slot) | Env | Supplies |
 | --- | --- | --- |
-| **Mock Provider** | `JARVIS_USE_MOCK_PROVIDER=true` | Simulated everything — testing only |
-| **ATTOM Property Data** (`property`) | `ATTOM_API_KEY` (+ `ATTOM_BASE_URL`) | Subject property facts; public record data; tax data; sale history; comparable sale data if supported by the configured endpoint |
-| **MLS / RESO Provider** (`comps`) | `MLS_API_KEY` (+ `MLS_BASE_URL`) | MLS sold comps; property details; listing history if licensed |
-| **Rent Provider** (`rent`) | `RENT_PROVIDER_API_KEY` (+ `RENT_PROVIDER_BASE_URL`) | Estimated rent; rent confidence; rental comparable support if available |
-| **County Records Provider** (`county`) | `COUNTY_PROVIDER_API_KEY` (+ `COUNTY_PROVIDER_BASE_URL`) | Owner info if legally available; tax assessed value; deed history; liens if legally available; public record details |
-| **Valuation Provider** (`valuation`) | `ATTOM_API_KEY` (+ `ATTOM_BASE_URL`) | External valuation estimates — supporting context only, never the final ARV |
+| **DealMachine** (`property`, `comps`, `county`, `valuation`) | `DEALMACHINE_API_KEY` | Subject facts; comparable sales with recorder `sale_type` (drives the non-disclosure flag); APN/tax/last-sale records; supporting value estimate — never the final ARV |
+| **Rent Provider** (`rent`) | `RENT_PROVIDER_API_KEY` (+ `RENT_PROVIDER_BASE_URL`) | Estimated rent; rent confidence (future) |
+
 
 ## Implementing a real provider
 

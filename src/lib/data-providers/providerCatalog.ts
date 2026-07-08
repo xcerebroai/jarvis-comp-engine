@@ -14,7 +14,7 @@ export interface ProviderCatalogEntry {
   name: string;
   /** Env vars that must be set for this provider to be considered configured. */
   requiredEnv: string[];
-  /** Optional env vars (e.g. base URLs) required before any real call runs. */
+  /** Optional env vars. */
   optionalEnv: string[];
   /** Plain-English list of what this provider supplies. */
   supplies: string[];
@@ -22,35 +22,48 @@ export interface ProviderCatalogEntry {
 
 export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
   {
-    type: 'mock',
-    name: 'Mock Provider',
-    requiredEnv: ['JARVIS_USE_MOCK_PROVIDER=true'],
+    type: 'property',
+    name: 'DealMachine Property Data',
+    requiredEnv: ['DEALMACHINE_API_KEY'],
     optionalEnv: [],
     supplies: [
-      'Simulated subject facts, comps, public record, AVM, and rent',
-      'Deterministic, seeded output for testing and demos',
-      'Testing only — never valid for real offers',
-    ],
-  },
-  {
-    type: 'property',
-    name: 'ATTOM Property Data',
-    requiredEnv: ['ATTOM_API_KEY'],
-    optionalEnv: ['ATTOM_BASE_URL'],
-    supplies: [
-      'Subject property facts',
-      'Public record data',
-      'Tax data',
-      'Sale history',
-      'Comparable sale data if supported by configured endpoint',
+      'Subject property facts (beds, baths, sqft, lot, year built)',
+      'Address match via POST /v1/enrichment/address',
+      'Estimated value (context only)',
     ],
   },
   {
     type: 'comps',
-    name: 'MLS / RESO Provider',
-    requiredEnv: ['MLS_API_KEY'],
-    optionalEnv: ['MLS_BASE_URL'],
-    supplies: ['MLS sold comps', 'Property details', 'Listing history if licensed'],
+    name: 'DealMachine Comparable Sales',
+    requiredEnv: ['DEALMACHINE_API_KEY'],
+    optionalEnv: [],
+    supplies: [
+      'Comparable sales via POST /v1/comps (radius, timeframe, criteria)',
+      'Per-comp sale price, sale date, distance, sqft, beds/baths, year built',
+      'Recorder sale_type text — drives the non-disclosure/modeled-price flag',
+    ],
+  },
+  {
+    type: 'county',
+    name: 'DealMachine Public Records',
+    requiredEnv: ['DEALMACHINE_API_KEY'],
+    optionalEnv: [],
+    supplies: [
+      'APN, tax assessed value, annual property tax',
+      'Last sale price and date',
+      'Mortgage / estimated loan balance context',
+    ],
+  },
+  {
+    type: 'valuation',
+    name: 'DealMachine Value Estimate',
+    requiredEnv: ['DEALMACHINE_API_KEY'],
+    optionalEnv: [],
+    supplies: [
+      'value_estimation with confidence interval',
+      'Supporting value context only',
+      'Never final ARV — the conservative ARV engine decides',
+    ],
   },
   {
     type: 'rent',
@@ -58,30 +71,6 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     requiredEnv: ['RENT_PROVIDER_API_KEY'],
     optionalEnv: ['RENT_PROVIDER_BASE_URL'],
     supplies: ['Estimated rent', 'Rent confidence', 'Rental comparable support if available'],
-  },
-  {
-    type: 'county',
-    name: 'County Records Provider',
-    requiredEnv: ['COUNTY_PROVIDER_API_KEY'],
-    optionalEnv: ['COUNTY_PROVIDER_BASE_URL'],
-    supplies: [
-      'Owner info if legally available',
-      'Tax assessed value',
-      'Deed history',
-      'Liens if legally available',
-      'Public record details',
-    ],
-  },
-  {
-    type: 'valuation',
-    name: 'Valuation Provider',
-    requiredEnv: ['ATTOM_API_KEY'],
-    optionalEnv: ['ATTOM_BASE_URL'],
-    supplies: [
-      'External valuation estimates',
-      'Supporting value context only',
-      'Never final ARV — the conservative ARV engine decides',
-    ],
   },
 ];
 
@@ -96,15 +85,6 @@ export interface ProviderCard extends ProviderCatalogEntry {
 export function mergeCatalog(status: ProviderStatus): ProviderCard[] {
   const byType = new Map(status.providers.map((p) => [p.type, p]));
   return PROVIDER_CATALOG.map((entry) => {
-    if (entry.type === 'mock') {
-      const mock = byType.get('mock');
-      return {
-        ...entry,
-        configured: true, // the mock is always available
-        active: status.mockProviderEnabled,
-        warnings: mock?.warnings ?? [],
-      };
-    }
     const live = byType.get(entry.type);
     return {
       ...entry,

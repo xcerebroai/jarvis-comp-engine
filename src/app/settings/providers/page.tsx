@@ -176,8 +176,8 @@ export default function ProviderSettingsPage() {
         </div>
 
         <p className="px-1 text-xs text-slate-500">
-          To activate a real provider, set its environment variables (see docs/providers/PROVIDER_SETUP.md)
-          and set JARVIS_USE_MOCK_PROVIDER=false, then restart the server. External valuations are supporting
+          To activate a provider, set its environment variables (see docs/providers/PROVIDER_SETUP.md)
+          and restart the server. There is no sample mode — real data or an honest error. External valuations are supporting
           context only — the conservative ARV engine always makes the final valuation recommendation.
         </p>
       </main>

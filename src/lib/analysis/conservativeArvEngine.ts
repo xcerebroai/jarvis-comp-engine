@@ -10,6 +10,7 @@
  *  - Repair vagueness / heavy rehab lowers ARV confidence (finish risk).
  */
 import { ARV_RULES } from '@/config/analysisConfig';
+import { isRecordedSale } from './saleRecording';
 import type {
   ArvResult,
   GradedComp,
@@ -116,12 +117,46 @@ export function computeArv(
     warnings.push('ARV assumes a quality renovation — finish level will move this number.');
   }
 
+  // Recorded-price layer: how many QUALIFIED comps carry an affirmatively
+  // recorded sale price (deed language)? Non-disclosure markets (e.g. TX) and
+  // modeled backfills fail this test — flag per-comp evidence, never a blanket
+  // state rule. This is OUR confidence, derived from OUR graded set. Only
+  // applies when the source supplies recorder metadata at all (saleType) —
+  // manual comps and sources without deed text carry no signal either way.
+  const hasRecorderMetadata = primary.some((g) => g.comp.saleType !== undefined);
+  const recordedQualifiedCount = hasRecorderMetadata
+    ? primary.filter((g) => isRecordedSale(g.comp.saleType)).length
+    : undefined;
+  if (hasRecorderMetadata && recordedQualifiedCount !== undefined && primary.length > 0) {
+    const unrecorded = primary.length - recordedQualifiedCount;
+    if (recordedQualifiedCount === 0) {
+      confidence = Math.min(confidence, 45);
+      conservative *= 0.97;
+      warnings.push(
+        'None of the qualified comps carry a recorded sale price — typical of non-disclosure states (e.g. Texas) or modeled data. Treat this ARV as modeled and verify with local sold data.',
+      );
+    } else if (unrecorded > 0) {
+      confidence -= Math.min(18, unrecorded * 6);
+      warnings.push(
+        `${unrecorded} of ${primary.length} qualified comp${primary.length === 1 ? '' : 's'} lack a recorded sale price (non-disclosure/modeled) — those values may be estimates.`,
+      );
+    }
+  }
+
   confidence = Math.max(10, Math.min(95, confidence));
 
   // Deeper discount when confidence is low.
   if (confidence < 60) conservative *= 0.94;
   // Always keep the recommended number below the median for imperfect data.
   conservative = Math.min(conservative, med * 0.99);
+
+  // Sanity flag: a CONSERVATIVE number landing above the provider's own
+  // estimate is unusual — surface it rather than silently trusting either side.
+  if (opts.valuation && opts.valuation.estimate > 0 && conservative > opts.valuation.estimate) {
+    warnings.push(
+      `Our conservative ARV ($${round1k(conservative).toLocaleString()}) lands ABOVE the provider's value estimate ($${round1k(opts.valuation.estimate).toLocaleString()}) — double-check the comp set before trusting either number.`,
+    );
+  }
 
   if (primary.length < ARV_RULES.minQualifiedSoldComps) {
     warnings.push(
@@ -148,6 +183,7 @@ export function computeArv(
     conservative: round1k(conservative),
     confidence: Math.round(confidence),
     qualifiedCompCount: primary.length,
+    recordedQualifiedCount,
     usedCompCount: used.length,
     explanation,
     warnings,

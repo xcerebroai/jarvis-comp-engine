@@ -17,8 +17,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     env:
-      # Force deterministic mock mode; CI never needs real provider keys.
-      JARVIS_USE_MOCK_PROVIDER: "true"
+      # CI never needs real provider keys; tests inject the mock bundle explicitly.
       CI: "true"
     steps:
       - name: Checkout

@@ -44,7 +44,7 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Build static export (mock mode)
-        run: NEXT_PUBLIC_GITHUB_PAGES=true JARVIS_USE_MOCK_PROVIDER=true npm run build
+        run: NEXT_PUBLIC_GITHUB_PAGES=true npm run build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
