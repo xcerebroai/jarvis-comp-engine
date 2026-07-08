@@ -26,10 +26,17 @@ function YesNo({ value }: { value: boolean }) {
   );
 }
 
+// Inlined at build time; true only in the GitHub Pages static demo.
+const IS_PAGES = process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true';
+
 export default function ProviderSettingsPage() {
   const status = getProviderStatus();
   const cards = getProviderCards();
-  const mode = status.mockProviderEnabled ? 'Mock Data (testing)' : 'Real Provider Mode';
+  const mode = IS_PAGES
+    ? 'GitHub Pages Demo (mock data only)'
+    : status.mockProviderEnabled
+      ? 'Mock Data (testing)'
+      : 'Real Provider Mode';
 
   return (
     <div className="min-h-screen text-slate-100">
@@ -55,6 +62,17 @@ export default function ProviderSettingsPage() {
       </header>
 
       <main className="mx-auto max-w-4xl space-y-4 px-4 py-6 sm:px-6">
+        {IS_PAGES && (
+          <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-200 glow-amber">
+            <p className="font-bold">Static Public Demo</p>
+            <p className="mt-1 opacity-90">
+              GitHub Pages is static hosting — it cannot hold API keys or run licensed providers, so
+              every provider below stays unconfigured and all analysis data is mock. Real provider
+              activation requires a backend/server deployment.
+            </p>
+          </div>
+        )}
+
         {/* Mode summary */}
         <div className="glow-border rounded-2xl bg-white/[0.025] p-5 backdrop-blur-sm">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

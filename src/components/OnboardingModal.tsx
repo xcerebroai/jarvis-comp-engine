@@ -5,8 +5,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { ArrowRightIcon, CloseIcon, PlugIcon, SparkIcon } from './icons';
 import { GlowIcon } from './ui';
+
+const IS_PAGES = process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true';
 
 const STEPS = [
   'Enter the property address',
@@ -28,6 +31,16 @@ export function OnboardingModal({
   onDismiss: () => void;
   onClose: () => void;
 }) {
+  // Escape closes the modal — standard dialog behavior.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <div
@@ -64,6 +77,13 @@ export function OnboardingModal({
           Enter a property address, add repair intel, and Jarvis will run a conservative acquisition
           analysis across wholesale, fix-and-flip, subject-to, and creative finance.
         </p>
+
+        {IS_PAGES && (
+          <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            You&apos;re viewing the static public demo — analysis runs in your browser using mock data
+            only. Nothing here is real market data.
+          </p>
+        )}
 
         <ol className="mt-4 space-y-2">
           {STEPS.map((s, i) => (

@@ -179,7 +179,9 @@ export function MetricCard({
         <span className="label-term">{label}</span>
         {icon && <GlowIcon icon={icon} tone={tone} size="sm" />}
       </div>
-      <div className={`mt-1 text-2xl font-bold tabular-nums ${valueTone}`}>{value}</div>
+      {/* leading-tight + break-words keeps long values (e.g. "Creative Finance")
+          readable when the summary grid squeezes to 6 columns. */}
+      <div className={`mt-1 text-xl leading-tight font-bold break-words tabular-nums sm:text-2xl ${valueTone}`}>{value}</div>
       {sub && <div className="mt-0.5 text-xs text-slate-400">{sub}</div>}
     </CommandCard>
   );
@@ -278,7 +280,7 @@ export function ScoreBar({ score, tone = 'cyan' }: { score: number; tone?: strin
     <div className="flex items-center gap-2">
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
         <div
-          className={`h-full rounded-full ${toneMap[tone] ?? toneMap.cyan}`}
+          className={`h-full rounded-full transition-[width] duration-300 ${toneMap[tone] ?? toneMap.cyan}`}
           style={{ width: `${Math.max(0, Math.min(100, score))}%` }}
         />
       </div>

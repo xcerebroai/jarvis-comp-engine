@@ -94,6 +94,22 @@ body > * {
 .status-dot {
   animation: cmd-pulse 2.4s ease-in-out infinite;
 }
+
+/* Loading spinner for the analysis-running state. */
+@keyframes cmd-spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  animation: cmd-spin 0.9s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .status-dot { animation: none; }
+  .status-dot, .spinner { animation: none; }
+}
+
+/* Visible keyboard-focus ring everywhere, tuned to the neon theme. */
+:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.65);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
