@@ -9,19 +9,26 @@
 import { normalizeAddress } from '@/lib/data-providers/addressNormalizer';
 import { resolveProviders } from '@/lib/data-providers';
 import { getProviderStatus } from '@/lib/data-providers/providerStatus';
-import type { ProviderBundle, ProviderContext } from '@/lib/data-providers/providerTypes';
+import type {
+  ProviderBundle,
+  ProviderContext,
+  ProviderResponse,
+} from '@/lib/data-providers/providerTypes';
 import type {
   AnalysisInput,
   AnalysisResult,
   ArvResult,
+  Comp,
+  CompInput,
   DataSource,
+  NormalizedAddress,
   OfferResult,
   OffersBundle,
+  PropertyCondition,
   RentEstimate,
   SellerInfoInput,
   SourceAuditEntry,
   StrategyRecommendation,
-  SubjectProperty,
 } from '@/lib/types';
 import { estimateRepairs } from './repairEstimator';
 import { gradeComps } from './compGradingEngine';
@@ -33,18 +40,67 @@ import { generateDealMemo } from './dealMemoGenerator';
 
 const usd = (n?: number | null) => (n == null ? '—' : `$${Math.round(n).toLocaleString()}`);
 
-const SOURCE_LABEL: Record<DataSource, string> = {
-  mock_provider: 'Simulated Mock Provider',
-  licensed_property_api: 'Licensed Property API (ATTOM)',
-  licensed_comps_api: 'Licensed Comps API (MLS)',
-  public_records_api: 'County Public Records API',
-  licensed_valuation_api: 'Licensed Valuation API (AVM)',
-  licensed_rent_api: 'Licensed Rent API',
-  manual_paste: 'Manual Paste (fallback)',
-  user_input: 'User Input',
-};
-
 const isMockSource = (s: DataSource) => s === 'mock_provider';
+
+const VALID_CONDITIONS: PropertyCondition[] = [
+  'unknown',
+  'distressed',
+  'below_average',
+  'average',
+  'updated',
+  'renovated',
+];
+
+function parseCondition(c?: string): PropertyCondition {
+  if (!c) return 'unknown';
+  const key = c.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return (VALID_CONDITIONS as string[]).includes(key) ? (key as PropertyCondition) : 'unknown';
+}
+
+/**
+ * Convert user-entered manual comps into gradeable Comp objects. Comps without
+ * a usable price are dropped (they can't inform value). Missing address parts
+ * inherit the subject's city/state/zip.
+ */
+function manualCompsToComps(
+  manual: CompInput[] | undefined,
+  address: NormalizedAddress,
+  asOf: string,
+): { comps: Comp[]; dropped: number } {
+  if (!manual?.length) return { comps: [], dropped: 0 };
+  const comps: Comp[] = [];
+  let dropped = 0;
+  manual.forEach((m, i) => {
+    const price = m.soldPrice;
+    if (!price || price <= 0) {
+      dropped += 1;
+      return;
+    }
+    const status = m.status === 'listed' ? 'active' : (m.status ?? 'sold');
+    comps.push({
+      id: `manual-${i + 1}`,
+      address: {
+        street: m.address?.trim() || `Manual comp ${i + 1}`,
+        city: address.city,
+        state: address.state,
+        zip: address.zip,
+      },
+      facts: {
+        beds: m.beds,
+        baths: m.baths,
+        sqft: m.sqft,
+        yearBuilt: m.yearBuilt,
+      },
+      condition: parseCondition(m.condition),
+      price,
+      status,
+      date: m.soldDate?.trim() || asOf.slice(0, 10),
+      distanceMiles: m.distanceMiles ?? 0.5,
+      source: 'manual_comp',
+    });
+  });
+  return { comps, dropped };
+}
 
 const STRATEGY_LABEL: Record<OfferResult['strategy'], string> = {
   wholesale: 'Wholesale',
@@ -154,29 +210,81 @@ export async function runPropertyAnalysis(
   const address = normalizeAddress(input.address);
   warnings.push(...address.warnings);
 
-  // Fetch provider data (parallel).
-  const subjectRaw = await providers.property.getProperty(address, ctx);
-  if (!subjectRaw) {
+  const sourceAudit: SourceAuditEntry[] = [];
+
+  /**
+   * Call a provider, unwrapping the envelope and turning any thrown error (e.g.
+   * a configured-but-unimplemented licensed adapter) into a null result with a
+   * warning so the pipeline can continue where possible.
+   */
+  async function callProvider<T>(
+    label: string,
+    fn: () => Promise<ProviderResponse<T>>,
+  ): Promise<ProviderResponse<T | null>> {
+    try {
+      return await fn();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return {
+        providerName: 'Unavailable',
+        sourceType: label,
+        isMock: false,
+        fetchedAt: asOf,
+        confidence: 'low',
+        data: null,
+        warnings: [`${label} provider unavailable: ${msg}`],
+      };
+    }
+  }
+
+  // 1) DATA RETRIEVAL --------------------------------------------------------
+  // Property (required — we need subject facts to value anything).
+  const propertyResp = await callProvider('property', () =>
+    providers.property.getPropertyByAddress(address, ctx),
+  );
+  // Mock warnings are covered by the loud mock banner; only surface real ones here.
+  if (!propertyResp.isMock) warnings.push(...propertyResp.warnings);
+  const subject = propertyResp.data;
+  if (!subject) {
     throw new Error(
-      'No property data available from the configured providers. Add a licensed provider or use the manual-paste fallback.',
+      'No property data available from the configured providers. Configure a property data provider (e.g. ATTOM) or enable mock mode for testing.',
     );
   }
-  const subject: SubjectProperty = subjectRaw;
 
-  const [comps, publicRecord, valuation, providerRent] = await Promise.all([
-    providers.comparables.getComparables(address, subject, ctx),
-    providers.publicRecords.getPublicRecord(address, ctx),
-    providers.valuation.getValuation(address, subject, ctx),
-    providers.rent.getRent(address, subject, ctx),
+  // Optional providers run in parallel; failures degrade gracefully.
+  const [compsResp, publicRecordResp, valuationResp, rentResp] = await Promise.all([
+    callProvider('comps', () => providers.comparables.getComparableSales(address, subject, ctx)),
+    callProvider('public_record', () => providers.publicRecords.getPublicRecord(address, ctx)),
+    callProvider('valuation', () => providers.valuation.getExternalValuations(address, subject, ctx)),
+    callProvider('rent', () => providers.rent.getRentEstimate(address, subject, ctx)),
   ]);
 
+  // Comps: provider comps + manual fallback comps, graded together.
+  const providerComps = compsResp.data ?? [];
+  const { comps: manualComps, dropped: manualDropped } = manualCompsToComps(
+    input.manualComps,
+    address,
+    asOf,
+  );
+  if (manualDropped > 0)
+    warnings.push(`${manualDropped} manual comp${manualDropped === 1 ? '' : 's'} ignored (no sold price).`);
+  const comps: Comp[] = [...providerComps, ...manualComps];
+
+  // 2) NORMALIZATION / ENRICHMENT -------------------------------------------
+  // External valuation: supporting context only — never the final ARV.
+  const valuation = (valuationResp.data ?? [])[0];
+
   // Enrich subject from public record where missing.
+  const publicRecord = publicRecordResp.data;
   if (publicRecord) {
     subject.facts.yearBuilt ??= publicRecord.yearBuilt;
     subject.facts.lotSqft ??= publicRecord.lotSqft;
+  } else if (!propertyResp.isMock) {
+    warnings.push('No public-record data — tax/APN/deed context unavailable; continuing.');
   }
 
-  // Rent: prefer the user's known figure.
+  // Rent: prefer the user's known figure, then a provider estimate.
+  const providerRent = rentResp.data;
   const rent: RentEstimate | undefined =
     input.sellerInfo?.estimatedRent != null
       ? {
@@ -186,40 +294,50 @@ export async function runPropertyAnalysis(
           source: 'user_input',
         }
       : (providerRent ?? undefined);
+  if (!rent)
+    warnings.push('No rent estimate — subject-to and creative-finance cash flow is unverified.');
 
-  // Per-run source audit (provenance for every piece of data we used).
+  // Comps are required to value the property.
+  if (comps.length === 0) {
+    throw new Error(
+      'Insufficient comparable data to compute ARV. Configure a comparable-sales provider (e.g. MLS/RESO) or add manual comps.',
+    );
+  }
+
+  // 3) SOURCE AUDIT ----------------------------------------------------------
   const f = subject.facts;
-  const sourceAudit: SourceAuditEntry[] = [];
-  const subjectSource = subject.sources[0] ?? 'mock_provider';
   sourceAudit.push({
-    provider: SOURCE_LABEL[subjectSource],
+    provider: propertyResp.providerName,
     sourceType: 'property',
-    mock: subject.sources.some(isMockSource),
-    fetchedAt: asOf,
+    mock: propertyResp.isMock,
+    fetchedAt: propertyResp.fetchedAt,
     supplied:
       `Subject facts — ${f.beds ?? '?'}bd / ${f.baths ?? '?'}ba, ` +
       `${f.sqft ? f.sqft.toLocaleString() : '?'} sqft, built ${f.yearBuilt ?? '?'}, ` +
       `${subject.condition.replace('_', ' ')} condition.`,
-    warnings: subject.sources.some(isMockSource) ? ['Simulated data — testing only.'] : [],
+    warnings: propertyResp.warnings,
   });
-  if (comps.length) {
-    const cSource = comps[0].source;
+  {
     const sold = comps.filter((c) => c.status === 'sold').length;
+    const usesMockComps = providerComps.some((c) => isMockSource(c.source));
+    const auditWarnings = [...compsResp.warnings];
+    if (manualComps.length)
+      auditWarnings.push(`${manualComps.length} manual fallback comp${manualComps.length === 1 ? '' : 's'} included.`);
     sourceAudit.push({
-      provider: SOURCE_LABEL[cSource],
+      provider: manualComps.length && !providerComps.length ? 'Manual comps (fallback)' : compsResp.providerName,
       sourceType: 'comps',
-      mock: isMockSource(cSource),
-      fetchedAt: asOf,
-      supplied: `${comps.length} comparable ${comps.length === 1 ? 'record' : 'records'} (${sold} sold, ${comps.length - sold} active/pending).`,
-      warnings: isMockSource(cSource) ? ['Simulated comps — not real market sales.'] : [],
+      mock: usesMockComps,
+      fetchedAt: compsResp.fetchedAt,
+      supplied: `${comps.length} comparable ${comps.length === 1 ? 'record' : 'records'} (${sold} sold, ${comps.length - sold} active/pending; ${manualComps.length} manual).`,
+      warnings: auditWarnings,
     });
   }
   if (publicRecord) {
     sourceAudit.push({
-      provider: SOURCE_LABEL[publicRecord.source],
+      provider: publicRecordResp.providerName,
       sourceType: 'public_record',
-      mock: isMockSource(publicRecord.source),
-      fetchedAt: asOf,
+      mock: publicRecordResp.isMock,
+      fetchedAt: publicRecordResp.fetchedAt,
       supplied:
         `Assessor/recorder — ` +
         [
@@ -229,32 +347,32 @@ export async function runPropertyAnalysis(
         ]
           .filter(Boolean)
           .join(', ') || 'basic record.',
-      warnings: isMockSource(publicRecord.source) ? ['Simulated record — testing only.'] : [],
+      warnings: publicRecordResp.warnings,
     });
   }
   if (valuation) {
     sourceAudit.push({
-      provider: SOURCE_LABEL[valuation.source],
+      provider: valuationResp.providerName,
       sourceType: 'valuation',
-      mock: isMockSource(valuation.source),
-      fetchedAt: asOf,
+      mock: valuationResp.isMock,
+      fetchedAt: valuationResp.fetchedAt,
       confidence: Math.round(valuation.confidence * 100),
-      supplied: `AVM ${usd(valuation.estimate)} (range ${usd(valuation.low)}–${usd(valuation.high)}), used only as a sanity check.`,
-      warnings: isMockSource(valuation.source) ? ['Simulated AVM — testing only.'] : [],
+      supplied: `AVM ${usd(valuation.estimate)} (range ${usd(valuation.low)}–${usd(valuation.high)}) — supporting context only, never the final ARV.`,
+      warnings: valuationResp.warnings,
     });
   }
   if (rent) {
     sourceAudit.push({
-      provider: SOURCE_LABEL[rent.source],
+      provider: rent.source === 'user_input' ? 'User Input' : rentResp.providerName,
       sourceType: 'rent',
       mock: isMockSource(rent.source),
-      fetchedAt: asOf,
+      fetchedAt: rentResp.fetchedAt,
       supplied: `Rent ${usd(rent.monthlyRent)}/mo (range ${usd(rent.low)}–${usd(rent.high)}).`,
-      warnings: isMockSource(rent.source) ? ['Simulated rent — testing only.'] : [],
+      warnings: rent.source === 'user_input' ? [] : rentResp.warnings,
     });
   }
 
-  // Pipeline.
+  // 4) ANALYSIS PIPELINE -----------------------------------------------------
   const repairEstimate = estimateRepairs(input.repairs, subject.facts.sqft);
   const graded = gradeComps(subject, comps, { asOf });
   const arv = computeArv(subject, graded, { valuation: valuation ?? undefined, repairEstimate });

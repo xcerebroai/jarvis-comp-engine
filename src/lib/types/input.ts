@@ -65,11 +65,37 @@ export interface SellerInfoInput {
   estimatedRent?: number;
 }
 
+/** Status of a manual comp, mirroring listing states (mapped in the pipeline). */
+export type CompInputStatus = 'sold' | 'active' | 'pending' | 'listed';
+
+/**
+ * A user-entered comparable, used as a FALLBACK when no comps provider is
+ * configured. Flows through the same grading engine as provider comps.
+ */
+export interface CompInput {
+  address?: string;
+  soldPrice?: number;
+  soldDate?: string;
+  beds?: number;
+  baths?: number;
+  sqft?: number;
+  yearBuilt?: number;
+  distanceMiles?: number;
+  /** Free-text or one of the known PropertyCondition values. */
+  condition?: string;
+  status?: CompInputStatus;
+  /** Where the user got this comp (MLS printout, agent, county, etc.). */
+  source?: string;
+  notes?: string;
+}
+
 /** The single object the whole autopilot pipeline runs on. */
 export interface AnalysisInput {
   address: AddressInput;
   repairs: RepairInput;
   sellerInfo?: SellerInfoInput;
+  /** Optional fallback comps when no comps provider is configured. */
+  manualComps?: CompInput[];
   /** Fallback only: raw pasted text when no provider is configured. */
   manualPaste?: string;
 }

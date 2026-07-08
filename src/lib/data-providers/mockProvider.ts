@@ -20,11 +20,25 @@ import type {
   ComparableSalesProvider,
   ProviderBundle,
   ProviderContext,
+  ProviderResponse,
   PropertyDataProvider,
   PublicRecordsProvider,
   RentProvider,
   ValuationProvider,
 } from './providerTypes';
+
+/** Wrap mock data in the standard envelope — always testing-only confidence. */
+function mockResp<T>(sourceType: string, data: T, ctx: ProviderContext): ProviderResponse<T> {
+  return {
+    providerName: 'Simulated Mock Provider',
+    sourceType,
+    isMock: true,
+    fetchedAt: ctx.asOf,
+    confidence: 'testing_only',
+    data,
+    warnings: ['Simulated data for testing only — not licensed provider data.'],
+  };
+}
 
 /* ------------------------- seeded RNG utilities ------------------------- */
 
@@ -173,16 +187,16 @@ const ID = 'mock';
 export const mockPropertyProvider: PropertyDataProvider = {
   id: ID,
   isConfigured: () => true,
-  async getProperty(address, ctx) {
-    return generate(address, ctx).subject;
+  async getPropertyByAddress(address, ctx) {
+    return mockResp('property', generate(address, ctx).subject, ctx);
   },
 };
 
 export const mockComparablesProvider: ComparableSalesProvider = {
   id: ID,
   isConfigured: () => true,
-  async getComparables(address, _subject, ctx) {
-    return generate(address, ctx).comps;
+  async getComparableSales(address, _subject, ctx) {
+    return mockResp('comps', generate(address, ctx).comps, ctx);
   },
 };
 
@@ -190,23 +204,23 @@ export const mockPublicRecordsProvider: PublicRecordsProvider = {
   id: ID,
   isConfigured: () => true,
   async getPublicRecord(address, ctx) {
-    return generate(address, ctx).publicRecord;
+    return mockResp('public_record', generate(address, ctx).publicRecord, ctx);
   },
 };
 
 export const mockValuationProvider: ValuationProvider = {
   id: ID,
   isConfigured: () => true,
-  async getValuation(address, _subject, ctx) {
-    return generate(address, ctx).valuation;
+  async getExternalValuations(address, _subject, ctx) {
+    return mockResp('valuation', [generate(address, ctx).valuation], ctx);
   },
 };
 
 export const mockRentProvider: RentProvider = {
   id: ID,
   isConfigured: () => true,
-  async getRent(address, _subject, ctx) {
-    return generate(address, ctx).rent;
+  async getRentEstimate(address, _subject, ctx) {
+    return mockResp('rent', generate(address, ctx).rent, ctx);
   },
 };
 

@@ -14,56 +14,72 @@
 import type {
   ComparableSalesProvider,
   ProviderBundle,
+  ProviderContext,
+  ProviderResponse,
   PropertyDataProvider,
   PublicRecordsProvider,
   RentProvider,
   ValuationProvider,
 } from './providerTypes';
 import { createMockBundle } from './mockProvider';
-import { licensedPropertyProvider } from './propertyDataProvider';
-import { licensedComparablesProvider } from './comparableSalesProvider';
-import { compliantPublicRecordsProvider } from './publicRecordsProvider';
-import { licensedValuationProvider } from './valuationProvider';
-import { licensedRentProvider } from './rentProvider';
+import { futureAttomProvider } from './propertyDataProvider';
+import { futureMlsResoProvider } from './comparableSalesProvider';
+import { futureCountyRecordsProvider } from './publicRecordsProvider';
+import { futureValuationProvider } from './valuationProvider';
+import { futureRentProvider } from './rentProvider';
 import { getProviderStatus, NO_PROVIDER_MESSAGE } from './providerStatus';
 
 /* --------------- inert providers (real mode, slot unconfigured) --------- */
-// These return no data rather than falling back to mock. They keep the
-// pipeline honest: a slot with no licensed adapter simply supplies nothing.
+// These return an empty envelope rather than falling back to mock. They keep
+// the pipeline honest: a slot with no licensed adapter simply supplies nothing,
+// with a warning the pipeline can surface.
 const UNCONFIGURED = 'unconfigured';
+
+function inertResponse<T>(sourceType: string, data: T, ctx: ProviderContext): ProviderResponse<T> {
+  return {
+    providerName: 'Not configured',
+    sourceType,
+    isMock: false,
+    fetchedAt: ctx.asOf,
+    confidence: 'low',
+    data,
+    warnings: [`No ${sourceType} provider is configured — this slot supplied no data.`],
+  };
+}
+
 const nullPropertyProvider: PropertyDataProvider = {
   id: UNCONFIGURED,
   isConfigured: () => false,
-  async getProperty() {
-    return null;
+  async getPropertyByAddress(_address, ctx) {
+    return inertResponse('property', null, ctx);
   },
 };
 const nullComparablesProvider: ComparableSalesProvider = {
   id: UNCONFIGURED,
   isConfigured: () => false,
-  async getComparables() {
-    return [];
+  async getComparableSales(_address, _subject, ctx) {
+    return inertResponse('comps', [], ctx);
   },
 };
 const nullPublicRecordsProvider: PublicRecordsProvider = {
   id: UNCONFIGURED,
   isConfigured: () => false,
-  async getPublicRecord() {
-    return null;
+  async getPublicRecord(_address, ctx) {
+    return inertResponse('public_record', null, ctx);
   },
 };
 const nullValuationProvider: ValuationProvider = {
   id: UNCONFIGURED,
   isConfigured: () => false,
-  async getValuation() {
-    return null;
+  async getExternalValuations(_address, _subject, ctx) {
+    return inertResponse('valuation', [], ctx);
   },
 };
 const nullRentProvider: RentProvider = {
   id: UNCONFIGURED,
   isConfigured: () => false,
-  async getRent() {
-    return null;
+  async getRentEstimate(_address, _subject, ctx) {
+    return inertResponse('rent', null, ctx);
   },
 };
 
@@ -77,19 +93,17 @@ export function resolveProviders(): ProviderBundle {
 
   // Real mode: configured licensed adapter per slot, else inert (no mock).
   return {
-    property: licensedPropertyProvider.isConfigured()
-      ? licensedPropertyProvider
-      : nullPropertyProvider,
-    comparables: licensedComparablesProvider.isConfigured()
-      ? licensedComparablesProvider
+    property: futureAttomProvider.isConfigured() ? futureAttomProvider : nullPropertyProvider,
+    comparables: futureMlsResoProvider.isConfigured()
+      ? futureMlsResoProvider
       : nullComparablesProvider,
-    publicRecords: compliantPublicRecordsProvider.isConfigured()
-      ? compliantPublicRecordsProvider
+    publicRecords: futureCountyRecordsProvider.isConfigured()
+      ? futureCountyRecordsProvider
       : nullPublicRecordsProvider,
-    valuation: licensedValuationProvider.isConfigured()
-      ? licensedValuationProvider
+    valuation: futureValuationProvider.isConfigured()
+      ? futureValuationProvider
       : nullValuationProvider,
-    rent: licensedRentProvider.isConfigured() ? licensedRentProvider : nullRentProvider,
+    rent: futureRentProvider.isConfigured() ? futureRentProvider : nullRentProvider,
     usesMock: false,
   };
 }

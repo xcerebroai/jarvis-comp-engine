@@ -12,6 +12,7 @@ export type DataSource =
   | 'public_records_api'
   | 'licensed_valuation_api'
   | 'licensed_rent_api'
+  | 'manual_comp'
   | 'manual_paste'
   | 'user_input';
 

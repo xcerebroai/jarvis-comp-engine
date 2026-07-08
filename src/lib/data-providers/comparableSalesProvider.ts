@@ -1,17 +1,33 @@
 /**
- * Licensed comparable-sales adapter (sold + active listings).
+ * FutureMlsResoProvider — comparable sales (sold + active listings) and, if
+ * licensed, property details and listing history. Backed by a LICENSED MLS/RESO
+ * Web API feed you are credentialed for.
  *
- * Placeholder for a licensed comps feed. Falls back to mock until configured.
- * NEVER back this with scraping of restricted listing sites.
+ * STUB: no network call yet. Refuses to run without BOTH key and base URL, and
+ * throws until the real mapping is implemented. NEVER back this with scraping
+ * of restricted listing sites.
  */
 import type { ComparableSalesProvider } from './providerTypes';
 
-// A licensed MLS/RESO comps feed. Read live so config changes take effect.
-export const licensedComparablesProvider: ComparableSalesProvider = {
-  id: 'licensed_comps_api',
+export const futureMlsResoProvider: ComparableSalesProvider = {
+  id: 'mls',
   isConfigured: () => Boolean(process.env.MLS_API_KEY),
-  async getComparables() {
-    // TODO: call the licensed comps API and map results to Comp[].
-    return [];
+  async getComparableSales() {
+    const key = process.env.MLS_API_KEY;
+    const baseUrl = process.env.MLS_BASE_URL;
+    if (!key) throw new Error('MLS/RESO provider is not configured (MLS_API_KEY missing).');
+    if (!baseUrl)
+      throw new Error(
+        'MLS/RESO provider has no MLS_BASE_URL configured — refusing to call an unknown endpoint.',
+      );
+    // TODO: Implement the real MLS/RESO comps query. The RESO resource/OData
+    // query, auth, and response→Comp[] mapping MUST be verified against your
+    // licensed MLS/RESO Web API documentation before enabling. Do NOT guess
+    // endpoints. No scraping. No browser automation.
+    throw new Error(
+      'MLS/RESO comps endpoint mapping is not implemented yet — verify against your licensed MLS/RESO Web API docs before enabling.',
+    );
   },
 };
+
+export const licensedComparablesProvider = futureMlsResoProvider;

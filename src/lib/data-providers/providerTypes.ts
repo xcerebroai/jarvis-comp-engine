@@ -5,7 +5,12 @@
  * of these interfaces. Adapters must be backed by LICENSED / ToS-compliant
  * feeds (MLS/RESO, ATTOM, CoreLogic, permissive public-record APIs, …) or be
  * the mock. We NEVER scrape Zillow, Redfin, Realtor, Trulia, Opendoor, MLS,
- * or any site that prohibits automated access. See docs/legal/DATA_SOURCING.md.
+ * or any site that prohibits automated access. See docs/legal/DATA_SOURCING.md
+ * and docs/providers/PROVIDER_SETUP.md.
+ *
+ * Every provider returns a standard ProviderResponse envelope so the pipeline
+ * can uniformly track provenance (who, when, mock-or-real, confidence,
+ * warnings) without knowing the concrete adapter.
  */
 import type {
   Comp,
@@ -22,23 +27,42 @@ export interface ProviderContext {
   asOf: string;
 }
 
+/** Qualitative confidence a provider reports about the data it returned. */
+export type ProviderConfidence = 'low' | 'medium' | 'high' | 'testing_only';
+
+/** The uniform envelope every provider method resolves to. */
+export interface ProviderResponse<T> {
+  /** Human-readable provider name (e.g. "ATTOM Property Data"). */
+  providerName: string;
+  /** Slot this data fills: property | comps | public_record | valuation | rent. */
+  sourceType: string;
+  /** True when this is simulated data, never a licensed feed. */
+  isMock: boolean;
+  /** ISO timestamp the data was fetched. */
+  fetchedAt: string;
+  confidence: ProviderConfidence;
+  /** The payload. `null`/empty means "this provider supplied nothing". */
+  data: T;
+  warnings: string[];
+}
+
 export interface PropertyDataProvider {
   readonly id: string;
   isConfigured(): boolean;
-  getProperty(
+  getPropertyByAddress(
     address: NormalizedAddress,
     ctx: ProviderContext,
-  ): Promise<SubjectProperty | null>;
+  ): Promise<ProviderResponse<SubjectProperty | null>>;
 }
 
 export interface ComparableSalesProvider {
   readonly id: string;
   isConfigured(): boolean;
-  getComparables(
+  getComparableSales(
     address: NormalizedAddress,
     subject: SubjectProperty,
     ctx: ProviderContext,
-  ): Promise<Comp[]>;
+  ): Promise<ProviderResponse<Comp[]>>;
 }
 
 export interface PublicRecordsProvider {
@@ -47,27 +71,28 @@ export interface PublicRecordsProvider {
   getPublicRecord(
     address: NormalizedAddress,
     ctx: ProviderContext,
-  ): Promise<PublicRecord | null>;
+  ): Promise<ProviderResponse<PublicRecord | null>>;
 }
 
 export interface ValuationProvider {
   readonly id: string;
   isConfigured(): boolean;
-  getValuation(
+  /** External AVMs — supporting context ONLY. Never the final ARV. */
+  getExternalValuations(
     address: NormalizedAddress,
     subject: SubjectProperty,
     ctx: ProviderContext,
-  ): Promise<ProviderValuation | null>;
+  ): Promise<ProviderResponse<ProviderValuation[]>>;
 }
 
 export interface RentProvider {
   readonly id: string;
   isConfigured(): boolean;
-  getRent(
+  getRentEstimate(
     address: NormalizedAddress,
     subject: SubjectProperty,
     ctx: ProviderContext,
-  ): Promise<RentEstimate | null>;
+  ): Promise<ProviderResponse<RentEstimate | null>>;
 }
 
 /** The full set of providers the pipeline resolves and calls. */

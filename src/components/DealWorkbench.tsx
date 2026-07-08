@@ -5,8 +5,9 @@
  */
 'use client';
 
+import Link from 'next/link';
 import { useState, useSyncExternalStore } from 'react';
-import type { AnalysisInput, AnalysisResult } from '@/lib/types';
+import type { AnalysisInput, AnalysisResult, ProviderStatus } from '@/lib/types';
 import {
   addSaved,
   getSavedSnapshot,
@@ -16,6 +17,7 @@ import {
   type SavedAnalysis,
 } from '@/lib/savedAnalyses';
 import { IntakeForm } from './IntakeForm';
+import { ProviderStrip } from './ProviderStrip';
 import { ResultsDashboard } from './ResultsDashboard';
 import { SavedAnalysesPanel } from './SavedAnalysesPanel';
 
@@ -30,7 +32,7 @@ function scrollToResults() {
   });
 }
 
-export function DealWorkbench() {
+export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStatus }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -82,12 +84,23 @@ export function DealWorkbench() {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6">
-          <h1 className="text-lg font-bold text-slate-900">Jarvis Comp Engine</h1>
-          <p className="text-sm text-slate-500">Autopilot acquisition analyst — enter an address and repairs, get every offer.</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-lg font-bold text-slate-900">Jarvis Comp Engine</h1>
+              <p className="text-sm text-slate-500">Autopilot acquisition analyst — enter an address and repairs, get every offer.</p>
+            </div>
+            <Link href="/settings/providers" className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-700">
+              Provider settings →
+            </Link>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+        <div className="mb-4">
+          <ProviderStrip status={providerStatus} />
+        </div>
+
         <IntakeForm loading={loading} onAnalyze={analyze} />
 
         {saved.length > 0 && (

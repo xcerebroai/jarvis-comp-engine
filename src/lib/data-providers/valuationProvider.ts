@@ -1,15 +1,34 @@
 /**
- * Licensed valuation (AVM) adapter. Used only as a sanity check against the
- * comp-derived ARV — never to inflate it. Falls back to mock until configured.
+ * FutureValuationProvider — external AVM / valuation estimates. These are
+ * SUPPORTING CONTEXT ONLY and are never the final ARV; the conservative ARV
+ * engine always makes the final valuation recommendation.
+ *
+ * STUB: no network call yet. Refuses to run without BOTH key and base URL, and
+ * throws until the real mapping is implemented. Shares the ATTOM key (ATTOM AVM)
+ * unless a dedicated valuation feed is added later.
  */
 import type { ValuationProvider } from './providerTypes';
 
-// ATTOM's AVM. Shares the ATTOM key with the property provider.
-export const licensedValuationProvider: ValuationProvider = {
-  id: 'licensed_valuation_api',
+export const futureValuationProvider: ValuationProvider = {
+  id: 'valuation',
   isConfigured: () => Boolean(process.env.ATTOM_API_KEY),
-  async getValuation() {
-    // TODO: call the licensed AVM API and map to ProviderValuation.
-    return null;
+  async getExternalValuations() {
+    const key = process.env.ATTOM_API_KEY;
+    const baseUrl = process.env.ATTOM_BASE_URL;
+    if (!key)
+      throw new Error('Valuation provider is not configured (ATTOM_API_KEY missing).');
+    if (!baseUrl)
+      throw new Error(
+        'Valuation provider has no ATTOM_BASE_URL configured — refusing to call an unknown endpoint.',
+      );
+    // TODO: Implement the real AVM lookup. Endpoint, params, and
+    // response→ProviderValuation[] mapping MUST be verified against official
+    // provider (ATTOM AVM) documentation before enabling. External valuations
+    // are supporting context only — never the final ARV.
+    throw new Error(
+      'Valuation provider endpoint mapping is not implemented yet — verify against official AVM API docs before enabling.',
+    );
   },
 };
+
+export const licensedValuationProvider = futureValuationProvider;

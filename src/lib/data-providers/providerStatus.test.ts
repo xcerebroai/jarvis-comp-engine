@@ -4,6 +4,7 @@ import {
   NO_PROVIDER_MESSAGE,
   type ProviderEnv,
 } from './providerStatus';
+import { mergeCatalog } from './providerCatalog';
 import { resolveProviders } from './index';
 
 describe('computeProviderStatus', () => {
@@ -31,6 +32,32 @@ describe('computeProviderStatus', () => {
     expect(valuation?.active).toBe(true);
     // Comps not configured → inactive.
     expect(status.providers.find((p) => p.type === 'comps')?.active).toBe(false);
+  });
+});
+
+describe('provider catalog cards (settings shape)', () => {
+  it('produces one card per slot with the required settings fields', () => {
+    const cards = mergeCatalog(computeProviderStatus({ useMock: true }));
+    const types = cards.map((c) => c.type);
+    expect(types).toEqual(['mock', 'property', 'comps', 'rent', 'county', 'valuation']);
+    for (const c of cards) {
+      expect(typeof c.name).toBe('string');
+      expect(Array.isArray(c.requiredEnv)).toBe(true);
+      expect(Array.isArray(c.supplies)).toBe(true);
+      expect(typeof c.configured).toBe('boolean');
+      expect(typeof c.active).toBe('boolean');
+      expect(Array.isArray(c.warnings)).toBe(true);
+    }
+    // In mock mode, the mock card is active and real ones are not.
+    expect(cards.find((c) => c.type === 'mock')?.active).toBe(true);
+    expect(cards.find((c) => c.type === 'property')?.active).toBe(false);
+  });
+
+  it('marks a real slot active in real mode when its key is configured', () => {
+    const cards = mergeCatalog(computeProviderStatus({ useMock: false, attomApiKey: 'x' }));
+    expect(cards.find((c) => c.type === 'property')?.active).toBe(true);
+    expect(cards.find((c) => c.type === 'valuation')?.active).toBe(true);
+    expect(cards.find((c) => c.type === 'comps')?.active).toBe(false);
   });
 });
 

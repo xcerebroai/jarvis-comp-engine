@@ -11,6 +11,8 @@ import {
   REPAIR_LEVELS,
   REHAB_LEVELS,
   type AnalysisInput,
+  type CompInput,
+  type CompInputStatus,
   type RehabLevel,
   type RepairCategories,
   type RepairCategory,
@@ -32,6 +34,27 @@ const toNum = (s: string): number | undefined => {
 
 const emptyCategories = (): Record<RepairCategory, RepairLevel> =>
   Object.fromEntries(REPAIR_CATEGORIES.map((c) => [c, 'not_needed'])) as Record<RepairCategory, RepairLevel>;
+
+const CONDITION_OPTIONS = ['unknown', 'distressed', 'below_average', 'average', 'updated', 'renovated'];
+const COMP_STATUS_OPTIONS: CompInputStatus[] = ['sold', 'active', 'pending', 'listed'];
+type CompRow = Record<string, string>;
+
+function toCompInput(row: CompRow): CompInput {
+  return {
+    address: row.address?.trim() || undefined,
+    soldPrice: toNum(row.soldPrice ?? ''),
+    soldDate: row.soldDate?.trim() || undefined,
+    beds: toNum(row.beds ?? ''),
+    baths: toNum(row.baths ?? ''),
+    sqft: toNum(row.sqft ?? ''),
+    yearBuilt: toNum(row.yearBuilt ?? ''),
+    distanceMiles: toNum(row.distanceMiles ?? ''),
+    condition: row.condition || undefined,
+    status: (row.status as CompInputStatus) || undefined,
+    source: row.source?.trim() || undefined,
+    notes: row.notes?.trim() || undefined,
+  };
+}
 
 export function IntakeForm({
   loading,
@@ -56,6 +79,13 @@ export function IntakeForm({
   const [seller, setSeller] = useState<Record<string, string>>({});
   const setS = (k: string, v: string) => setSeller((p) => ({ ...p, [k]: v }));
 
+  const [showManualComps, setShowManualComps] = useState(false);
+  const [manualComps, setManualComps] = useState<CompRow[]>([]);
+  const addComp = () => setManualComps((p) => [...p, { status: 'sold', condition: 'unknown' }]);
+  const updateComp = (i: number, k: string, v: string) =>
+    setManualComps((p) => p.map((row, idx) => (idx === i ? { ...row, [k]: v } : row)));
+  const removeComp = (i: number) => setManualComps((p) => p.filter((_, idx) => idx !== i));
+
   const canSubmit = Boolean(fullAddress.trim() || (street.trim() && (city.trim() || zip.trim())));
 
   function submit() {
@@ -76,6 +106,10 @@ export function IntakeForm({
     };
     const hasSeller = Object.values(sellerInfo).some((v) => v != null && v !== '');
 
+    const comps = manualComps
+      .map(toCompInput)
+      .filter((c) => c.soldPrice != null || (c.address && c.address.length > 0));
+
     onAnalyze({
       address: {
         fullAddress: fullAddress.trim() || undefined,
@@ -91,6 +125,7 @@ export function IntakeForm({
         categories: Object.keys(cats).length ? cats : undefined,
       },
       sellerInfo: hasSeller ? sellerInfo : undefined,
+      manualComps: comps.length ? comps : undefined,
     });
   }
 
@@ -218,7 +253,64 @@ export function IntakeForm({
         )}
       </Section>
 
-      {/* SECTION 4 — Analyze */}
+      {/* SECTION 4 — Manual comps (fallback) */}
+      <Section step={4} title="Manual Comps" subtitle="Fallback only — used when no comparable-sales provider is configured.">
+        <button
+          type="button"
+          onClick={() => {
+            setShowManualComps((s) => !s);
+            if (!showManualComps && manualComps.length === 0) addComp();
+          }}
+          className="mb-3 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+        >
+          {showManualComps ? '− Hide' : '+ Add'} manual comps as fallback
+        </button>
+        {showManualComps && (
+          <div className="space-y-4">
+            {manualComps.map((row, i) => (
+              <div key={i} className="rounded-lg border border-slate-200 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-500">Comp {i + 1}</span>
+                  <button type="button" onClick={() => removeComp(i)} className="text-xs text-slate-400 hover:text-red-600">
+                    Remove
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="col-span-2 sm:col-span-4">
+                    <Field label="Address"><TextInput value={row.address ?? ''} onChange={(e) => updateComp(i, 'address', e.target.value)} placeholder="456 Comp St" /></Field>
+                  </div>
+                  <Field label="Sold price"><TextInput inputMode="decimal" value={row.soldPrice ?? ''} onChange={(e) => updateComp(i, 'soldPrice', e.target.value)} placeholder="$" /></Field>
+                  <Field label="Sold date"><TextInput value={row.soldDate ?? ''} onChange={(e) => updateComp(i, 'soldDate', e.target.value)} placeholder="YYYY-MM-DD" /></Field>
+                  <Field label="Beds"><TextInput inputMode="decimal" value={row.beds ?? ''} onChange={(e) => updateComp(i, 'beds', e.target.value)} /></Field>
+                  <Field label="Baths"><TextInput inputMode="decimal" value={row.baths ?? ''} onChange={(e) => updateComp(i, 'baths', e.target.value)} /></Field>
+                  <Field label="Sqft"><TextInput inputMode="decimal" value={row.sqft ?? ''} onChange={(e) => updateComp(i, 'sqft', e.target.value)} /></Field>
+                  <Field label="Year built"><TextInput inputMode="decimal" value={row.yearBuilt ?? ''} onChange={(e) => updateComp(i, 'yearBuilt', e.target.value)} /></Field>
+                  <Field label="Distance (mi)"><TextInput inputMode="decimal" value={row.distanceMiles ?? ''} onChange={(e) => updateComp(i, 'distanceMiles', e.target.value)} /></Field>
+                  <Field label="Condition">
+                    <Select value={row.condition ?? 'unknown'} onChange={(v) => updateComp(i, 'condition', v)}>
+                      {CONDITION_OPTIONS.map((c) => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Status">
+                    <Select value={row.status ?? 'sold'} onChange={(v) => updateComp(i, 'status', v)}>
+                      {COMP_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Source"><TextInput value={row.source ?? ''} onChange={(e) => updateComp(i, 'source', e.target.value)} placeholder="MLS printout, agent…" /></Field>
+                  <div className="col-span-2 sm:col-span-4">
+                    <Field label="Notes"><TextInput value={row.notes ?? ''} onChange={(e) => updateComp(i, 'notes', e.target.value)} /></Field>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={addComp} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+              + Add another comp
+            </button>
+          </div>
+        )}
+      </Section>
+
+      {/* SECTION 5 — Analyze */}
       <button
         type="button"
         disabled={!canSubmit || loading}
