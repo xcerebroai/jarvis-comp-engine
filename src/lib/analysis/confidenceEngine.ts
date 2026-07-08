@@ -3,6 +3,7 @@
  * completeness into an overall 0–100 confidence score. Mock/simulated data is
  * capped so it can never read as high-confidence licensed data.
  */
+import { ARV_RULES } from '@/config/analysisConfig';
 import type {
   ArvResult,
   ConfidenceScore,
@@ -41,20 +42,34 @@ export function computeConfidence(input: ConfidenceInput): ConfidenceScore {
 
   let score = Math.round(0.45 * arv.confidence + 0.25 * repairEstimate.confidence + 0.3 * completeness);
 
+  // Thin comp support caps confidence low — a value from <3 qualified sold
+  // comps is not defensible no matter how complete the other inputs look.
+  const thinComps = qualified < ARV_RULES.minQualifiedSoldComps;
+  if (thinComps) {
+    score = Math.min(score, 44);
+    factors.push({
+      label: `Only ${qualified} qualified sold comp${qualified === 1 ? '' : 's'}`,
+      points: 0,
+      detail: `need ${ARV_RULES.minQualifiedSoldComps}+ for solid confidence — capped low`,
+    });
+  }
+
   if (usedMockProvider) {
     score = Math.min(score, 80);
-    factors.push({ label: 'Simulated (mock) data', points: -0, detail: 'confidence capped at 80' });
+    factors.push({ label: 'Simulated (mock) data', points: -0, detail: 'testing only — capped at 80' });
   }
 
   score = Math.max(5, Math.min(95, score));
   const level = score < 45 ? 'low' : score < 70 ? 'moderate' : 'high';
 
-  const summary =
+  let summary =
     level === 'high'
       ? 'High confidence — inputs are complete and comps are strong.'
       : level === 'moderate'
         ? 'Moderate confidence — usable, but tighten the weakest inputs before acting.'
         : 'Low confidence — treat this as a first-pass screen, not a final number.';
+  if (thinComps) summary = `Fewer than ${ARV_RULES.minQualifiedSoldComps} qualified sold comps. ${summary}`;
+  if (usedMockProvider) summary = `Simulated (mock) data — for testing only. ${summary}`;
 
   return { score, level, factors, summary };
 }

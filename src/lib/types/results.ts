@@ -171,6 +171,54 @@ export interface DealMemo {
   plainText: string;
 }
 
+/* ------------------------- Provider status ------------------------------ */
+
+/** Which data slot a provider fills. */
+export type ProviderSlotType =
+  | 'mock'
+  | 'property'
+  | 'comps'
+  | 'rent'
+  | 'county'
+  | 'valuation';
+
+export interface ProviderStatusEntry {
+  name: string;
+  type: ProviderSlotType;
+  /** True when this provider's API key/credential is present. */
+  configured: boolean;
+  /** True when this provider is actually supplying data for this run. */
+  active: boolean;
+  warnings: string[];
+}
+
+/** Snapshot of how the app is configured to source data. */
+export interface ProviderStatus {
+  mockProviderEnabled: boolean;
+  realProvidersConfigured: boolean;
+  providers: ProviderStatusEntry[];
+  globalWarnings: string[];
+}
+
+/* --------------------------- Source audit ------------------------------- */
+
+/** One row of the per-analysis data-provenance audit. */
+export interface SourceAuditEntry {
+  /** Human-readable provider that supplied this data. */
+  provider: string;
+  /** The kind of data this row covers. */
+  sourceType: 'property' | 'comps' | 'public_record' | 'valuation' | 'rent';
+  /** True when this came from the simulated mock (never licensed data). */
+  mock: boolean;
+  /** ISO timestamp the data was fetched / attached. */
+  fetchedAt: string;
+  /** 0–100 confidence when the provider reports one. */
+  confidence?: number;
+  /** Plain-English description of what this source supplied. */
+  supplied: string;
+  warnings: string[];
+}
+
 /* ---------------------------- Full Result ------------------------------- */
 
 export interface AnalysisResult {
@@ -189,6 +237,10 @@ export interface AnalysisResult {
   recommendation: StrategyRecommendation;
   memo: DealMemo;
   dataSources: DataSource[];
+  /** Per-run provenance audit — one row per data source used. */
+  sourceAudit: SourceAuditEntry[];
+  /** How the app resolved providers for this run (mock vs. real). */
+  providerStatus: ProviderStatus;
   /** True when results came from the mock provider (dev/testing). */
   usedMockProvider: boolean;
   warnings: string[];

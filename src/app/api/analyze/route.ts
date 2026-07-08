@@ -6,6 +6,7 @@
  */
 import { NextResponse } from 'next/server';
 import { runPropertyAnalysis } from '@/lib/analysis/runPropertyAnalysis';
+import { getProviderStatus, NO_PROVIDER_MESSAGE } from '@/lib/data-providers/providerStatus';
 import type { AnalysisInput } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -26,6 +27,13 @@ export async function POST(req: Request) {
       { error: 'A property address is required (full address, or street + city/ZIP).' },
       { status: 400 },
     );
+  }
+
+  // Production-safe guard: never silently fall back to mock when mock mode is
+  // off and no real provider is configured.
+  const status = getProviderStatus();
+  if (!status.mockProviderEnabled && !status.realProvidersConfigured) {
+    return NextResponse.json({ error: NO_PROVIDER_MESSAGE }, { status: 503 });
   }
 
   try {

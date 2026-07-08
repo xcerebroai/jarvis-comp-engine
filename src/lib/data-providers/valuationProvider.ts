@@ -4,11 +4,10 @@
  */
 import type { ValuationProvider } from './providerTypes';
 
-const API_KEY = process.env.JARVIS_VALUATION_API_KEY;
-
+// ATTOM's AVM. Shares the ATTOM key with the property provider.
 export const licensedValuationProvider: ValuationProvider = {
   id: 'licensed_valuation_api',
-  isConfigured: () => Boolean(API_KEY),
+  isConfigured: () => Boolean(process.env.ATTOM_API_KEY),
   async getValuation() {
     // TODO: call the licensed AVM API and map to ProviderValuation.
     return null;

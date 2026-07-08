@@ -8,11 +8,11 @@
  */
 import type { PropertyDataProvider } from './providerTypes';
 
-const API_KEY = process.env.JARVIS_PROPERTY_API_KEY;
-
+// ATTOM supplies subject facts (beds/baths/sqft/year/type). Read live so tests
+// and runtime both see the current environment.
 export const licensedPropertyProvider: PropertyDataProvider = {
   id: 'licensed_property_api',
-  isConfigured: () => Boolean(API_KEY),
+  isConfigured: () => Boolean(process.env.ATTOM_API_KEY),
   async getProperty() {
     // TODO: call the licensed property API and map its response to
     // SubjectProperty. Until then, signal "no data" so we fall back.

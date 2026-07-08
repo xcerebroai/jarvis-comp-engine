@@ -8,6 +8,7 @@
  */
 import { normalizeAddress } from '@/lib/data-providers/addressNormalizer';
 import { resolveProviders } from '@/lib/data-providers';
+import { getProviderStatus } from '@/lib/data-providers/providerStatus';
 import type { ProviderBundle, ProviderContext } from '@/lib/data-providers/providerTypes';
 import type {
   AnalysisInput,
@@ -18,6 +19,7 @@ import type {
   OffersBundle,
   RentEstimate,
   SellerInfoInput,
+  SourceAuditEntry,
   StrategyRecommendation,
   SubjectProperty,
 } from '@/lib/types';
@@ -30,6 +32,19 @@ import { computeConfidence } from './confidenceEngine';
 import { generateDealMemo } from './dealMemoGenerator';
 
 const usd = (n?: number | null) => (n == null ? '—' : `$${Math.round(n).toLocaleString()}`);
+
+const SOURCE_LABEL: Record<DataSource, string> = {
+  mock_provider: 'Simulated Mock Provider',
+  licensed_property_api: 'Licensed Property API (ATTOM)',
+  licensed_comps_api: 'Licensed Comps API (MLS)',
+  public_records_api: 'County Public Records API',
+  licensed_valuation_api: 'Licensed Valuation API (AVM)',
+  licensed_rent_api: 'Licensed Rent API',
+  manual_paste: 'Manual Paste (fallback)',
+  user_input: 'User Input',
+};
+
+const isMockSource = (s: DataSource) => s === 'mock_provider';
 
 const STRATEGY_LABEL: Record<OfferResult['strategy'], string> = {
   wholesale: 'Wholesale',
@@ -172,6 +187,73 @@ export async function runPropertyAnalysis(
         }
       : (providerRent ?? undefined);
 
+  // Per-run source audit (provenance for every piece of data we used).
+  const f = subject.facts;
+  const sourceAudit: SourceAuditEntry[] = [];
+  const subjectSource = subject.sources[0] ?? 'mock_provider';
+  sourceAudit.push({
+    provider: SOURCE_LABEL[subjectSource],
+    sourceType: 'property',
+    mock: subject.sources.some(isMockSource),
+    fetchedAt: asOf,
+    supplied:
+      `Subject facts — ${f.beds ?? '?'}bd / ${f.baths ?? '?'}ba, ` +
+      `${f.sqft ? f.sqft.toLocaleString() : '?'} sqft, built ${f.yearBuilt ?? '?'}, ` +
+      `${subject.condition.replace('_', ' ')} condition.`,
+    warnings: subject.sources.some(isMockSource) ? ['Simulated data — testing only.'] : [],
+  });
+  if (comps.length) {
+    const cSource = comps[0].source;
+    const sold = comps.filter((c) => c.status === 'sold').length;
+    sourceAudit.push({
+      provider: SOURCE_LABEL[cSource],
+      sourceType: 'comps',
+      mock: isMockSource(cSource),
+      fetchedAt: asOf,
+      supplied: `${comps.length} comparable ${comps.length === 1 ? 'record' : 'records'} (${sold} sold, ${comps.length - sold} active/pending).`,
+      warnings: isMockSource(cSource) ? ['Simulated comps — not real market sales.'] : [],
+    });
+  }
+  if (publicRecord) {
+    sourceAudit.push({
+      provider: SOURCE_LABEL[publicRecord.source],
+      sourceType: 'public_record',
+      mock: isMockSource(publicRecord.source),
+      fetchedAt: asOf,
+      supplied:
+        `Assessor/recorder — ` +
+        [
+          publicRecord.apn ? `APN ${publicRecord.apn}` : null,
+          publicRecord.lastSalePrice ? `last sale ${usd(publicRecord.lastSalePrice)}` : null,
+          publicRecord.annualTaxes ? `taxes ${usd(publicRecord.annualTaxes)}/yr` : null,
+        ]
+          .filter(Boolean)
+          .join(', ') || 'basic record.',
+      warnings: isMockSource(publicRecord.source) ? ['Simulated record — testing only.'] : [],
+    });
+  }
+  if (valuation) {
+    sourceAudit.push({
+      provider: SOURCE_LABEL[valuation.source],
+      sourceType: 'valuation',
+      mock: isMockSource(valuation.source),
+      fetchedAt: asOf,
+      confidence: Math.round(valuation.confidence * 100),
+      supplied: `AVM ${usd(valuation.estimate)} (range ${usd(valuation.low)}–${usd(valuation.high)}), used only as a sanity check.`,
+      warnings: isMockSource(valuation.source) ? ['Simulated AVM — testing only.'] : [],
+    });
+  }
+  if (rent) {
+    sourceAudit.push({
+      provider: SOURCE_LABEL[rent.source],
+      sourceType: 'rent',
+      mock: isMockSource(rent.source),
+      fetchedAt: asOf,
+      supplied: `Rent ${usd(rent.monthlyRent)}/mo (range ${usd(rent.low)}–${usd(rent.high)}).`,
+      warnings: isMockSource(rent.source) ? ['Simulated rent — testing only.'] : [],
+    });
+  }
+
   // Pipeline.
   const repairEstimate = estimateRepairs(input.repairs, subject.facts.sqft);
   const graded = gradeComps(subject, comps, { asOf });
@@ -204,6 +286,7 @@ export async function runPropertyAnalysis(
     confidence,
     recommendation,
     sellerInfo: input.sellerInfo,
+    sourceAudit,
     usedMockProvider: providers.usesMock,
   });
 
@@ -239,6 +322,8 @@ export async function runPropertyAnalysis(
     recommendation,
     memo,
     dataSources,
+    sourceAudit,
+    providerStatus: getProviderStatus(),
     usedMockProvider: providers.usesMock,
     warnings,
   };

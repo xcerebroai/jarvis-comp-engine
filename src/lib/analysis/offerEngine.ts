@@ -249,6 +249,17 @@ function buildSubjectTo(ctx: HoldCtx): OfferResult {
 function buildCreativeFinance(ctx: Omit<HoldCtx, 'repairs'>): OfferResult {
   const { A, sellerInfo, rentMonthly, valueConf, rehabRisk, arvConfidence } = ctx;
 
+  // Creative finance is only real if the seller has signaled terms. With none,
+  // the numbers below are pure assumptions — flag it and cut confidence.
+  const hasSellerTerms = Boolean(
+    sellerInfo &&
+      (sellerInfo.askingPrice ||
+        sellerInfo.interestRate ||
+        sellerInfo.loanBalance ||
+        sellerInfo.monthlyPiti ||
+        sellerInfo.cashToSeller),
+  );
+
   const asking = sellerInfo?.askingPrice;
   const price = Math.min(asking ?? A, A); // never pay above conservative ARV
   const down = price * OFFER_RULES.creativeDownPct;
@@ -271,6 +282,10 @@ function buildCreativeFinance(ctx: Omit<HoldCtx, 'repairs'>): OfferResult {
   if ((sellerInfo?.loanBalance ?? 0) > 0) riskPoints += 10;
 
   const redFlags: string[] = [];
+  if (!hasSellerTerms)
+    redFlags.push(
+      'No seller terms provided — creative finance needs the seller’s price, rate, and down-payment expectations to price accurately. Gather terms before relying on this.',
+    );
   if ((sellerInfo?.loanBalance ?? 0) > 0)
     redFlags.push('Seller has an existing loan — a wrap/creative note carries due-on-sale risk.');
   if (monthlyCashFlow !== undefined && monthlyCashFlow < 0)
@@ -288,7 +303,10 @@ function buildCreativeFinance(ctx: Omit<HoldCtx, 'repairs'>): OfferResult {
     equity: Math.round(A - price),
     monthlyCashFlow,
     riskLevel: riskLevelFrom(riskPoints),
-    confidence: Math.max(5, Math.round(valueConf * (rentMonthly ? 0.85 : 0.65) * (viable ? 1 : 0.7))),
+    confidence: Math.max(
+      5,
+      Math.round(valueConf * (rentMonthly ? 0.85 : 0.65) * (viable ? 1 : 0.7) * (hasSellerTerms ? 1 : 0.7)),
+    ),
     explanation:
       `Seller-financed at ${usd(price)} with ${Math.round(OFFER_RULES.creativeDownPct * 100)}% down ` +
       `(${usd(down)}), ${(rate * 100).toFixed(1)}% over ${OFFER_RULES.creativeTermMonths / 12} yrs ⇒ ` +

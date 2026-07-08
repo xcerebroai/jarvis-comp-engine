@@ -35,6 +35,9 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
 
   return (
     <div className="space-y-4">
+      {/* Top-level mock-data warning */}
+      {result.usedMockProvider && <MockBanner />}
+
       {/* Warnings banner */}
       {result.warnings.length > 0 && (
         <Card className="border-amber-200 bg-amber-50 p-4">
@@ -110,6 +113,9 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
         )}
       </Section>
 
+      {/* Mock warning — directly above the ARV, per production-safety spec. */}
+      {result.usedMockProvider && <MockBanner />}
+
       {/* 3 — Conservative ARV */}
       <Section title="3 · Conservative ARV">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -129,6 +135,9 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
           </ul>
         )}
       </Section>
+
+      {/* Mock warning — directly above the comp table, per production-safety spec. */}
+      {result.usedMockProvider && <MockBanner />}
 
       {/* 4 — Comparable Sales */}
       <Section title="4 · Comparable Sales" subtitle={`${qualified.length} qualified · ${support.length} active support · ${rejected.length} penalized/rejected`}>
@@ -167,7 +176,75 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
 
       {/* 7 — Deal Memo */}
       <DealMemoBlock memo={memo} />
+
+      {/* 8 — Data Sources & Providers */}
+      <DataSourcesBlock result={result} />
     </div>
+  );
+}
+
+function MockBanner() {
+  return (
+    <Card className="border-red-300 bg-red-50 p-4">
+      <p className="text-sm font-bold text-red-800">⚠︎ Mock Data Mode</p>
+      <p className="mt-1 text-sm text-red-700">
+        This analysis is using simulated property/comparable data for testing.{' '}
+        <span className="font-semibold">Do not use this valuation for real offers.</span>
+      </p>
+    </Card>
+  );
+}
+
+function DataSourcesBlock({ result }: { result: AnalysisResult }) {
+  const { providerStatus, sourceAudit } = result;
+  return (
+    <Section title="8 · Data Sources & Providers" subtitle="Provenance and provider configuration for this analysis.">
+      {/* Provider configuration */}
+      <div className="space-y-1.5">
+        {providerStatus.providers.map((p) => (
+          <div key={`${p.type}-${p.name}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium text-slate-800">{p.name}</div>
+              <div className="text-xs text-slate-500">{p.type}</div>
+            </div>
+            <div className="flex shrink-0 gap-1.5">
+              {p.active && <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">active</Badge>}
+              <Badge className={p.configured ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-slate-200 bg-slate-50 text-slate-500'}>
+                {p.configured ? 'configured' : 'not configured'}
+              </Badge>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Source audit */}
+      <div className="mt-4">
+        <div className="mb-2 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">Source Audit</div>
+        <div className="space-y-2">
+          {sourceAudit.map((a, i) => (
+            <div key={i} className="rounded-lg border border-slate-200 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-slate-800">{a.provider}</span>
+                <div className="flex gap-1.5">
+                  {a.mock && <Badge className="border-red-200 bg-red-50 text-red-700">mock</Badge>}
+                  <Badge className="border-slate-200 bg-slate-50 text-slate-600">{a.sourceType.replace('_', ' ')}</Badge>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-slate-600">{a.supplied}</p>
+              <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-slate-400">
+                <span>fetched {new Date(a.fetchedAt).toLocaleString()}</span>
+                {a.confidence != null && <span>confidence {a.confidence}/100</span>}
+              </div>
+              {a.warnings.length > 0 && (
+                <ul className="mt-1 space-y-0.5 text-[11px] text-amber-700">
+                  {a.warnings.map((w, j) => <li key={j}>⚠︎ {w}</li>)}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </Section>
   );
 }
 

@@ -127,6 +127,11 @@ export function estimateRepairs(
     (input.repairNotes?.trim().length ?? 0) > 8 ||
     (input.knownMajorRepairs?.trim().length ?? 0) > 8;
   if (hasNotes) confidence += 8;
+  // A heavy/full-gut scope with no itemized detail can never be high-confidence,
+  // regardless of notes — the dollar swing is too wide. Force it low.
+  if (vague && (rehabLevel === 'heavy' || rehabLevel === 'full_gut') && !hasItemization) {
+    confidence = Math.min(confidence, 40);
+  }
   confidence = Math.max(5, Math.min(95, confidence));
 
   // Warnings.

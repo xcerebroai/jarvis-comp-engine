@@ -15,6 +15,7 @@ import type {
   RepairEstimate,
   RiskScore,
   SellerInfoInput,
+  SourceAuditEntry,
   StrategyRecommendation,
   SubjectProperty,
 } from '@/lib/types';
@@ -40,8 +41,12 @@ export interface DealMemoInput {
   confidence: ConfidenceScore;
   recommendation: StrategyRecommendation;
   sellerInfo?: SellerInfoInput;
+  sourceAudit: SourceAuditEntry[];
   usedMockProvider: boolean;
 }
+
+const MOCK_WARNING =
+  'Mock provider data was used. This memo is for testing only. Do not use these valuations for real offers.';
 
 function offerLine(o: OfferResult): string {
   const label = STRATEGY_LABEL[o.strategy];
@@ -66,6 +71,10 @@ export function generateDealMemo(input: DealMemoInput): DealMemo {
   const support = comps.filter((c) => c.disposition === 'support');
 
   const sections: MemoSection[] = [];
+
+  if (input.usedMockProvider) {
+    sections.push({ title: 'Mock Data Warning', body: MOCK_WARNING });
+  }
 
   sections.push({
     title: 'Property',
@@ -102,6 +111,30 @@ export function generateDealMemo(input: DealMemoInput): DealMemo {
   });
 
   sections.push({
+    title: 'Qualified Comps',
+    body: qualified.length
+      ? qualified
+          .map(
+            (g) =>
+              `- ${g.comp.address.street}: ${usd(g.comp.price)} · ${g.comp.facts.sqft ? g.comp.facts.sqft.toLocaleString() : '?'} sqft · ${g.comp.status} · score ${g.score}/100 · implies ${usd(g.impliedValue)}`,
+          )
+          .join('\n')
+      : 'None reached the qualified bar — the value estimate is less certain.',
+  });
+
+  sections.push({
+    title: 'Rejected Comps',
+    body: rejected.length
+      ? rejected
+          .map(
+            (g) =>
+              `- ${g.comp.address.street}: ${usd(g.comp.price)} — ${g.penalties.map((p) => p.label).join('; ') || g.explanation}`,
+          )
+          .join('\n')
+      : 'None rejected.',
+  });
+
+  sections.push({
     title: 'Offer Recommendations',
     body: [offers.wholesale, offers.fix_and_flip, offers.subject_to, offers.creative_finance]
       .map(offerLine)
@@ -117,6 +150,20 @@ export function generateDealMemo(input: DealMemoInput): DealMemo {
   sections.push({
     title: 'Risk & Confidence',
     body: `Risk ${risk.score}/100 (${risk.level.replace('_', ' ')}). ${risk.summary} Overall confidence ${confidence.score}/100 (${confidence.level}). ${confidence.summary}`,
+  });
+
+  sections.push({
+    title: 'Data Sources Used',
+    body: [
+      ...input.sourceAudit.map(
+        (a) =>
+          `- ${a.provider} (${a.sourceType.replace('_', ' ')})${a.mock ? ' — MOCK / testing only' : ''}: ${a.supplied}` +
+          (a.confidence != null ? ` [confidence ${a.confidence}/100]` : ''),
+      ),
+      input.usedMockProvider ? MOCK_WARNING : '',
+    ]
+      .filter(Boolean)
+      .join('\n'),
   });
 
   // Aggregate red flags.
@@ -148,6 +195,7 @@ export function generateDealMemo(input: DealMemoInput): DealMemo {
 
   const plainText = [
     `DEAL MEMO — ${address.formatted}`,
+    ...(input.usedMockProvider ? ['*** MOCK DATA — TESTING ONLY. Do not use for real offers. ***'] : []),
     headline,
     '',
     ...sections.map((s) => `${s.title.toUpperCase()}\n${s.body}`),

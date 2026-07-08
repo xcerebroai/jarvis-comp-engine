@@ -6,11 +6,10 @@
  */
 import type { ComparableSalesProvider } from './providerTypes';
 
-const API_KEY = process.env.JARVIS_COMPS_API_KEY;
-
+// A licensed MLS/RESO comps feed. Read live so config changes take effect.
 export const licensedComparablesProvider: ComparableSalesProvider = {
   id: 'licensed_comps_api',
-  isConfigured: () => Boolean(API_KEY),
+  isConfigured: () => Boolean(process.env.MLS_API_KEY),
   async getComparables() {
     // TODO: call the licensed comps API and map results to Comp[].
     return [];

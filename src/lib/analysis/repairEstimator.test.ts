@@ -40,4 +40,12 @@ describe('estimateRepairs', () => {
     const r = estimateRepairs({ rehabLevel: 'full_gut' }, 1500);
     expect(r.warnings.join(' ')).toMatch(/renovation quality/i);
   });
+
+  it('forces low repair confidence for a vague full-gut scope (no itemization, even with notes)', () => {
+    const r = estimateRepairs(
+      { rehabLevel: 'full_gut', repairNotes: 'whole house needs everything, gut it' },
+      1500,
+    );
+    expect(r.confidence).toBeLessThan(45);
+  });
 });

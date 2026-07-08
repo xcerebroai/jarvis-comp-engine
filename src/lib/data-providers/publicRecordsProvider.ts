@@ -7,11 +7,9 @@
  */
 import type { PublicRecordsProvider } from './providerTypes';
 
-const API_KEY = process.env.JARVIS_PUBLIC_RECORDS_API_KEY;
-
 export const compliantPublicRecordsProvider: PublicRecordsProvider = {
   id: 'public_records_api',
-  isConfigured: () => Boolean(API_KEY),
+  isConfigured: () => Boolean(process.env.COUNTY_PROVIDER_API_KEY),
   async getPublicRecord() {
     // TODO: call the compliant public-records API and map to PublicRecord.
     return null;
