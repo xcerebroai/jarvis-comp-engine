@@ -1,2 +1,3 @@
 export * from './property';
-export * from './offer';
+export * from './input';
+export * from './results';

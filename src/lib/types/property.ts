@@ -1,32 +1,47 @@
 /**
- * Core domain types for a single-family property and its comps.
- *
- * These types are the shared vocabulary across ingestion, domain logic,
- * and the UI. Ingestion adapters normalize raw pasted/API data INTO these
- * shapes; domain logic only ever operates ON these shapes.
+ * Core domain vocabulary: the property, its comps, and provider-returned
+ * records. Data providers normalize raw/licensed data INTO these shapes;
+ * the analysis engines only ever operate ON these shapes.
  */
 
-/** Where a piece of data originally came from. Drives trust + compliance. */
+/** Provenance of a piece of data — drives trust, confidence, and compliance. */
 export type DataSource =
+  | 'mock_provider'
+  | 'licensed_property_api'
+  | 'licensed_comps_api'
+  | 'public_records_api'
+  | 'licensed_valuation_api'
+  | 'licensed_rent_api'
   | 'manual_paste'
-  | 'zillow_paste'
-  | 'redfin_paste'
-  | 'realtor_paste'
-  | 'county_records'
-  | 'mls_notes'
-  | 'seller_notes'
-  | 'repair_notes'
-  | 'inspection_notes'
-  | 'licensed_api';
+  | 'user_input';
 
 export interface Address {
-  line1: string;
+  street: string;
   city: string;
   state: string;
   zip: string;
 }
 
-/** Physical facts about a home. All optional — pasted data is often partial. */
+/** Result of address normalization. `key` is a stable lookup handle. */
+export interface NormalizedAddress extends Address {
+  /** Single-line canonical form, e.g. "123 Main St, Austin, TX 78701". */
+  formatted: string;
+  /** Stable lowercased key used to seed providers / cache lookups. */
+  key: string;
+  /** 0–1 — how confident the normalizer is that it parsed correctly. */
+  confidence: number;
+  warnings: string[];
+}
+
+export type PropertyType =
+  | 'single_family'
+  | 'townhouse'
+  | 'condo'
+  | 'multi_family'
+  | 'manufactured'
+  | 'unknown';
+
+/** Physical facts about a home. All optional — provider data is often partial. */
 export interface PropertyFacts {
   beds?: number;
   baths?: number;
@@ -46,36 +61,58 @@ export type PropertyCondition =
   | 'updated'
   | 'renovated';
 
-export interface Subject {
-  address: Address;
+/** The subject property under analysis, as assembled from provider data. */
+export interface SubjectProperty {
+  address: NormalizedAddress;
+  propertyType: PropertyType;
   facts: PropertyFacts;
   condition: PropertyCondition;
-  /** Free-form notes captured from seller / inspection / MLS. */
-  notes?: string;
-  /** Provenance of each field, for auditability. */
+  /** Provider guess of current value (AVM-style), if available. */
+  providerValueEstimate?: number;
   sources: DataSource[];
 }
 
 /** A comparable sale or active/pending listing. */
 export interface Comp {
+  id: string;
   address: Address;
   facts: PropertyFacts;
   condition: PropertyCondition;
   /** Sold price, or list price for active/pending. */
   price: number;
   status: 'sold' | 'pending' | 'active';
-  /** ISO date of sale or listing. */
-  date?: string;
-  distanceMiles?: number;
+  /** ISO date of sale (sold) or list date (active/pending). */
+  date: string;
+  distanceMiles: number;
   source: DataSource;
 }
 
-/** A dollar figure paired with the confidence we have in it. */
-export interface Estimate {
-  value: number;
+/** Public-record data (assessor / recorder), used lawfully via APIs only. */
+export interface PublicRecord {
+  apn?: string;
+  ownerName?: string;
+  lastSalePrice?: number;
+  lastSaleDate?: string;
+  taxAssessedValue?: number;
+  annualTaxes?: number;
+  lotSqft?: number;
+  yearBuilt?: number;
+  source: DataSource;
+}
+
+/** Provider valuation (AVM). Used as a sanity check, never to inflate ARV. */
+export interface ProviderValuation {
+  estimate: number;
   low: number;
   high: number;
-  /** 0–1. How much weight downstream offer math should give this. */
+  /** 0–1 confidence reported by the provider. */
   confidence: number;
-  notes?: string;
+  source: DataSource;
+}
+
+export interface RentEstimate {
+  monthlyRent: number;
+  low: number;
+  high: number;
+  source: DataSource;
 }
