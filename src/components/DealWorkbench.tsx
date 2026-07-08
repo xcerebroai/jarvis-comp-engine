@@ -22,8 +22,8 @@ import {
   getServerOnboardingSnapshot,
   subscribeOnboarding,
 } from '@/lib/onboarding';
-import { ArchiveIcon, HelpIcon, PlugIcon, ShieldIcon, SparkIcon } from './icons';
-import { GlowIcon, StatusPill } from './ui';
+import { ArchiveIcon, HelpIcon, PlugIcon, ShieldIcon, SparkIcon, WarningIcon } from './icons';
+import { GlowIcon, StatusPill, WarningBanner } from './ui';
 import { IntakeForm } from './IntakeForm';
 import { OnboardingModal } from './OnboardingModal';
 import { ProviderStrip } from './ProviderStrip';
@@ -40,6 +40,9 @@ function scrollToResults() {
     document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 }
+
+// GitHub Pages static demo: no server, run analysis in-browser on the mock.
+const IS_PAGES = process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true';
 
 export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStatus }) {
   const [loading, setLoading] = useState(false);
@@ -61,14 +64,22 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
     setError(null);
     setSavedId(null);
     try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? 'Analysis failed.');
-      setResult(data as AnalysisResult);
+      let data: AnalysisResult;
+      if (IS_PAGES) {
+        // Static demo: run the exact same pure pipeline client-side (mock only).
+        const { runClientMockAnalysis } = await import('@/lib/analysis/runClientMockAnalysis');
+        data = await runClientMockAnalysis(input);
+      } else {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error ?? 'Analysis failed.');
+        data = json as AnalysisResult;
+      }
+      setResult(data);
       scrollToResults();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
@@ -149,6 +160,15 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        {IS_PAGES && (
+          <div className="mb-4">
+            <WarningBanner tone="amber" icon={<WarningIcon className="h-5 w-5" />} title="GitHub Pages Demo">
+              This hosted version runs fully in-browser using mock property/comparable data.{' '}
+              <span className="font-semibold">Do not use this valuation for real offers.</span>
+            </WarningBanner>
+          </div>
+        )}
+
         <div className="mb-4">
           <ProviderStrip status={providerStatus} />
         </div>

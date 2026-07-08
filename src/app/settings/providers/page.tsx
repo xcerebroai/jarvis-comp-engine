@@ -8,7 +8,9 @@ import { getProviderStatus } from '@/lib/data-providers/providerStatus';
 import { getProviderCards } from '@/lib/data-providers/providerCatalog';
 import { ArrowRightIcon, PlugIcon } from '@/components/icons';
 
-export const dynamic = 'force-dynamic'; // always reflect current env
+// Prerendered at build time (reflects build-time env); compatible with the
+// GitHub Pages static export.
+export const dynamic = 'force-static';
 
 function YesNo({ value }: { value: boolean }) {
   return (

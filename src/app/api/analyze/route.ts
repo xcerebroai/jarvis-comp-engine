@@ -1,8 +1,10 @@
 /**
- * POST /api/analyze — runs the autopilot pipeline server-side.
+ * POST /api/analyze — runs the autopilot pipeline server-side (local/server
+ * deploy). Provider calls (and, later, licensed-API keys) live on the server.
  *
- * Provider calls (and, later, licensed-API keys) live on the server. The mock
- * provider also runs here so the client never needs data credentials.
+ * NOTE: the GitHub Pages STATIC EXPORT excludes this route entirely (there is
+ * no server there); the browser runs the same pipeline via runClientMockAnalysis
+ * against the mock provider. See scripts/build.mjs and next.config.ts.
  */
 import { NextResponse } from 'next/server';
 import { runPropertyAnalysis } from '@/lib/analysis/runPropertyAnalysis';

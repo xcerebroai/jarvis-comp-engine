@@ -19,6 +19,24 @@ licensed providers.
   final number — the app's **conservative ARV engine always makes the final
   valuation recommendation**.
 
+## GitHub Pages demo (static hosting)
+
+The live demo at **https://xcerebroai.github.io/jarvis-comp-engine/** is a
+static export (`NEXT_PUBLIC_GITHUB_PAGES=true`). Because GitHub Pages is static
+hosting:
+
+- **It cannot use private API keys.** There is no server and no secret store, so
+  no licensed provider can run there.
+- **It uses mock data only.** The browser runs the same pure pipeline
+  (`runClientMockAnalysis` → `runPropertyAnalysis` with the mock bundle) — no
+  API route, no network calls.
+- **Real provider activation requires a backend/server runtime** (a normal
+  `next build` + `next start`, or any Node host) where env vars stay server-side.
+- **Never put an API key in a `NEXT_PUBLIC_*` variable.** Those are inlined into
+  the client bundle and would be publicly exposed. Provider keys
+  (`ATTOM_API_KEY`, etc.) are read only on the server and must never be prefixed
+  `NEXT_PUBLIC_`.
+
 ## Modes
 
 The resolver (`src/lib/data-providers/index.ts`) supports exactly three modes:
