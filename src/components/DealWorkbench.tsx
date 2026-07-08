@@ -1,7 +1,7 @@
 /**
- * DealWorkbench — top-level client container. Holds the intake input, calls the
- * server analysis route, renders the results dashboard, and manages the local
- * saved-analysis history (save / reopen / delete).
+ * DealWorkbench — top-level client container / command center. Holds the intake
+ * input, calls the server analysis route, renders results, manages the local
+ * saved-analysis history, and the first-visit onboarding.
  */
 'use client';
 
@@ -16,7 +16,16 @@ import {
   subscribeSaved,
   type SavedAnalysis,
 } from '@/lib/savedAnalyses';
+import {
+  dismissOnboarding,
+  getOnboardingSnapshot,
+  getServerOnboardingSnapshot,
+  subscribeOnboarding,
+} from '@/lib/onboarding';
+import { ArchiveIcon, HelpIcon, PlugIcon, ShieldIcon, SparkIcon } from './icons';
+import { GlowIcon, StatusPill } from './ui';
 import { IntakeForm } from './IntakeForm';
+import { OnboardingModal } from './OnboardingModal';
 import { ProviderStrip } from './ProviderStrip';
 import { ResultsDashboard } from './ResultsDashboard';
 import { SavedAnalysesPanel } from './SavedAnalysesPanel';
@@ -37,7 +46,15 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const saved = useSyncExternalStore(subscribeSaved, getSavedSnapshot, getServerSavedSnapshot);
+  const onboardingDismissed = useSyncExternalStore(
+    subscribeOnboarding,
+    getOnboardingSnapshot,
+    getServerOnboardingSnapshot,
+  );
+
+  const mock = providerStatus.mockProviderEnabled;
 
   async function analyze(input: AnalysisInput) {
     setLoading(true);
@@ -80,23 +97,58 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
     if (savedId === id) setSavedId(null);
   }
 
+  function closeOnboarding() {
+    dismissOnboarding();
+    setHelpOpen(false);
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-lg font-bold text-slate-900">Jarvis Comp Engine</h1>
-              <p className="text-sm text-slate-500">Autopilot acquisition analyst — enter an address and repairs, get every offer.</p>
+    <div className="min-h-screen text-slate-100">
+      {/* Hero / command header */}
+      <header className="border-b border-white/5">
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <GlowIcon icon={<SparkIcon />} tone="cyan" />
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-50 text-glow sm:text-3xl">
+                  Jarvis Comp Engine
+                </h1>
+                <p className="label-term mt-1 text-cyan-300/80">Autopilot Acquisition Analyst</p>
+                <p className="mt-2 max-w-2xl text-sm text-slate-400">
+                  Analyze single-family deals using provider data, conservative comp logic, repair
+                  estimates, and strategy-specific offer engines.
+                </p>
+              </div>
             </div>
-            <Link href="/settings/providers" className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-700">
-              Provider settings →
-            </Link>
+            <div className="hidden shrink-0 gap-2 sm:flex">
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-cyan-400/40 hover:text-cyan-200"
+              >
+                <HelpIcon className="h-4 w-4" /> How it works
+              </button>
+              <Link
+                href="/settings/providers"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-violet-400/40 hover:text-violet-200"
+              >
+                <PlugIcon className="h-4 w-4" /> Provider Settings
+              </Link>
+            </div>
+          </div>
+
+          {/* Status pills */}
+          <div className="mt-6 flex flex-wrap gap-2">
+            <StatusPill label="Provider Mode" value={mock ? 'Mock Data' : 'Real Data'} tone={mock ? 'amber' : 'emerald'} />
+            <StatusPill label="Data Confidence" value={mock ? 'Testing Only' : 'Live'} tone={mock ? 'red' : 'cyan'} />
+            <StatusPill label="Saved Analyses" value={String(saved.length)} tone="violet" />
+            <StatusPill label="No-Scraping Boundary" value="Active" tone="emerald" />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
         <div className="mb-4">
           <ProviderStrip status={providerStatus} />
         </div>
@@ -110,24 +162,36 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
         )}
 
         {error && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-red-400/40 bg-red-500/10 p-4 text-sm text-red-200 glow-red">
+            <ShieldIcon className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-semibold">Analysis could not complete</p>
+              <p className="mt-0.5 opacity-90">{error}</p>
+            </div>
+          </div>
         )}
 
         {loading && (
-          <div className="mt-6 text-center text-sm text-slate-500">Running the analysis pipeline…</div>
+          <div className="mt-6 flex items-center justify-center gap-3 text-sm text-cyan-200/80">
+            <span className="status-dot h-2 w-2 rounded-full bg-cyan-400" />
+            Running comps, ARV, repairs, risk, confidence, and all offer strategies…
+          </div>
         )}
 
         {result && (
           <div id="results" className="mt-8 scroll-mt-6">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Analysis Results</h2>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <ArchiveIcon className="h-4 w-4 text-cyan-300" />
+                <h2 className="label-term text-slate-300">Acquisition Analysis</h2>
+              </div>
               <button
                 type="button"
                 onClick={handleSave}
                 disabled={savedId != null}
-                className="shrink-0 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-default disabled:border-emerald-200 disabled:bg-emerald-50 disabled:text-emerald-700"
+                className="shrink-0 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-400/20 disabled:cursor-default disabled:border-emerald-400/40 disabled:bg-emerald-400/10 disabled:text-emerald-300"
               >
-                {savedId != null ? 'Saved ✓' : 'Save analysis'}
+                {savedId != null ? 'Saved ✓' : 'Save Analysis'}
               </button>
             </div>
             <ResultsDashboard result={result} />
@@ -135,9 +199,28 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
         )}
       </main>
 
-      <footer className="mx-auto max-w-5xl px-4 py-8 text-center text-xs text-slate-400 sm:px-6">
-        Conservative by design. No scraping — data comes from licensed providers or the mock provider. Not financial advice.
+      <footer className="mx-auto max-w-6xl px-4 py-8 text-center text-xs text-slate-500 sm:px-6">
+        Conservative by design. No scraping — data comes from licensed providers or the mock provider. Not
+        financial, legal, tax, or investment advice.
       </footer>
+
+      <OnboardingModal
+        open={helpOpen || !onboardingDismissed}
+        onStart={closeOnboarding}
+        onDismiss={closeOnboarding}
+        onClose={closeOnboarding}
+      />
+
+      {/* Floating help button (mobile + always available) */}
+      <button
+        type="button"
+        onClick={() => setHelpOpen(true)}
+        className="glow-cyan fixed right-4 bottom-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full border border-cyan-400/40 bg-[#0a1120]/90 text-cyan-200 backdrop-blur transition hover:bg-cyan-400/20"
+        aria-label="How it works"
+        title="How it works"
+      >
+        <HelpIcon className="h-5 w-5" />
+      </button>
     </div>
   );
 }
