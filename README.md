@@ -124,7 +124,12 @@ NEXT_PUBLIC_GITHUB_PAGES=true JARVIS_USE_MOCK_PROVIDER=true npm run build  # sta
 Not planned: any scraping of restricted sites, or treating an external AVM as the
 final valuation.
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`SECURITY.md`](SECURITY.md). Work on
+a branch and open a PR — no direct commits to `main`.
+
 ## License
 
 **License not yet selected. All rights reserved until a license is explicitly
-added.**
+added.** See [`LICENSE`](LICENSE).
