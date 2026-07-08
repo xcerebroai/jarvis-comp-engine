@@ -43,10 +43,19 @@ const DISPOSITION_TONE: Record<CompDisposition, string> = {
   rejected: 'text-slate-400 bg-white/5 border-white/10',
 };
 
+// Inlined at build time; true only in the GitHub Pages static demo.
+const IS_PAGES = process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true';
+
 function MockBanner() {
   return (
-    <WarningBanner tone="red" icon={<WarningIcon className="h-5 w-5" />} title="Mock Data Mode">
-      This analysis is using simulated property/comparable data for testing.{' '}
+    <WarningBanner
+      tone="red"
+      icon={<WarningIcon className="h-5 w-5" />}
+      title={IS_PAGES ? 'Mock Data — Static Public Demo' : 'Mock Data Mode'}
+    >
+      {IS_PAGES
+        ? 'This is a static public demo using mock data only — every property, comp, and dollar figure below is simulated. '
+        : 'This analysis is using simulated property/comparable data for testing. '}
       <span className="font-semibold">Do not use this valuation for real offers.</span>
     </WarningBanner>
   );
@@ -77,8 +86,8 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
         </Card>
       )}
 
-      {/* Summary metric cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      {/* Summary metric cards — 2-up on phones, 3-up on tablets, 6-up only on wide desktop. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <MetricCard label="Conservative ARV" value={money(arv.conservative)} tone="emerald" icon={<ShieldIcon />} />
         <MetricCard label="Repair Estimate" value={money(repairEstimate.recommended)} tone="violet" icon={<ToolsIcon />} />
         <MetricCard label="Strategy" value={recommendation.label} tone="cyan" icon={<TargetIcon />} />
@@ -97,8 +106,8 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
         />
         <MetricCard
           label="Provider Mode"
-          value={result.usedMockProvider ? 'Mock Data' : 'Real Data'}
-          sub={result.usedMockProvider ? 'Testing only' : 'Live'}
+          value={IS_PAGES ? 'Demo' : result.usedMockProvider ? 'Mock Data' : 'Real Data'}
+          sub={IS_PAGES ? 'Mock data only' : result.usedMockProvider ? 'Testing only' : 'Live'}
           tone={result.usedMockProvider ? 'amber' : 'emerald'}
         />
       </div>
@@ -188,12 +197,22 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
         </div>
       </Section>
 
-      {/* 5 — Offer Options */}
-      <Section step="05" icon={<TargetIcon />} tone="violet" title="Offer Options">
+      {/* 5 — Offer Options (recommended strategy leads for easy comparison) */}
+      <Section
+        step="05"
+        icon={<TargetIcon />}
+        tone="violet"
+        title="Offer Options"
+        subtitle="All four strategies, priced off the conservative ARV. The recommended strategy is listed first."
+      >
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {[offers.fix_and_flip, offers.wholesale, offers.subject_to, offers.creative_finance].map((o) => (
-            <OfferCard key={o.strategy} o={o} recommended={o.strategy === recommendation.strategy} />
-          ))}
+          {[offers.fix_and_flip, offers.wholesale, offers.subject_to, offers.creative_finance]
+            .sort((a, b) =>
+              (a.strategy === recommendation.strategy ? -1 : 0) - (b.strategy === recommendation.strategy ? -1 : 0),
+            )
+            .map((o) => (
+              <OfferCard key={o.strategy} o={o} recommended={o.strategy === recommendation.strategy} />
+            ))}
         </div>
       </Section>
 
@@ -229,17 +248,31 @@ function CompRow({ g, subjectSqft }: { g: GradedComp; subjectSqft?: number }) {
   const [open, setOpen] = useState(false);
   const c = g.comp;
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-3 text-left">
-        <div className="w-24 shrink-0"><ScoreBar score={g.score} tone={g.score >= 70 ? 'emerald' : g.score >= 45 ? 'amber' : 'red'} /></div>
+    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 transition hover:border-white/20">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 text-left"
+      >
+        <div className="hidden w-24 shrink-0 sm:block">
+          <ScoreBar score={g.score} tone={g.score >= 70 ? 'emerald' : g.score >= 45 ? 'amber' : 'red'} />
+        </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium text-slate-200">{c.address.street}</div>
           <div className="text-xs text-slate-500">
             {money(c.price)} · {c.status} · {c.facts.sqft?.toLocaleString() ?? '?'} sqft · {c.distanceMiles} mi
             {subjectSqft && c.facts.sqft ? ` · implies ${money(g.impliedValue)}` : ''}
+            <span className="sm:hidden"> · score {g.score}/100</span>
           </div>
         </div>
         <Badge className={DISPOSITION_TONE[g.disposition]}>{g.disposition}</Badge>
+        <span
+          aria-hidden
+          className={`shrink-0 text-xs text-slate-500 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
+        >
+          ▸
+        </span>
       </button>
       {open && (
         <div className="mt-2 border-t border-white/10 pt-2 text-xs text-slate-400">
@@ -342,12 +375,22 @@ function DealMemoBlock({ memo }: { memo: AnalysisResult['memo'] }) {
         <button
           type="button"
           onClick={copy}
-          className="shrink-0 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-cyan-400/40 hover:text-cyan-200"
+          aria-live="polite"
+          className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+            copied
+              ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
+              : 'border-white/15 bg-white/[0.03] text-slate-200 hover:border-cyan-400/40 hover:text-cyan-200'
+          }`}
         >
-          {copied ? 'Copied!' : 'Copy memo'}
+          {copied ? 'Copied ✓' : 'Copy memo'}
         </button>
       }
     >
+      {IS_PAGES && (
+        <p className="mb-3 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          Static public demo — this memo was generated from mock data only and is not usable for a real offer.
+        </p>
+      )}
       <p className="mb-3 text-sm font-medium text-slate-200">{memo.headline}</p>
       <div className="space-y-3">
         {memo.sections.map((s) => (
@@ -383,7 +426,7 @@ function DataSourcesBlock({ result }: { result: AnalysisResult }) {
       icon={<DatabaseIcon />}
       tone="violet"
       title="Data Sources & Providers"
-      subtitle="Provenance and provider configuration for this analysis."
+      subtitle="Every number above traces back to a source listed here. Rows marked MOCK are simulated — testing only, never real market data."
     >
       <div className="space-y-1.5">
         {providerStatus.providers.map((p) => (

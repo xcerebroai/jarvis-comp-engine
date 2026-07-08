@@ -178,11 +178,12 @@ export function IntakeForm({
                 <button
                   key={lvl}
                   type="button"
+                  aria-pressed={rehabLevel === lvl}
                   onClick={() => setRehabLevel(rehabLevel === lvl ? '' : lvl)}
                   className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
                     rehabLevel === lvl
                       ? 'border-cyan-400/60 bg-cyan-400/15 text-cyan-100 glow-cyan'
-                      : 'border-white/12 bg-white/[0.03] text-slate-300 hover:border-cyan-400/40'
+                      : 'border-white/12 bg-white/[0.03] text-slate-300 hover:border-cyan-400/40 hover:text-slate-100'
                   }`}
                 >
                   {REHAB_LEVEL_LABEL[lvl]}
@@ -200,8 +201,8 @@ export function IntakeForm({
             </Field>
           </div>
 
-          <button type="button" onClick={() => setShowItemized((s) => !s)} className={linkBtn}>
-            {showItemized ? '− Hide' : '+ Add'} itemized repair categories (optional)
+          <button type="button" onClick={() => setShowItemized((s) => !s)} aria-expanded={showItemized} className={linkBtn}>
+            {showItemized ? '▾ Hide' : '▸ Add'} itemized repair categories (optional)
           </button>
 
           {showItemized && (
@@ -231,8 +232,8 @@ export function IntakeForm({
         title="Seller / Debt Intel"
         subtitle="Debt and payment info unlocks subject-to and creative finance analysis."
       >
-        <button type="button" onClick={() => setShowSeller((s) => !s)} className={`mb-3 ${linkBtn}`}>
-          {showSeller ? '− Hide' : '+ Add'} seller / debt details
+        <button type="button" onClick={() => setShowSeller((s) => !s)} aria-expanded={showSeller} className={`mb-3 ${linkBtn}`}>
+          {showSeller ? '▾ Hide' : '▸ Add'} seller / debt details
         </button>
         {showSeller && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -280,9 +281,10 @@ export function IntakeForm({
             setShowManualComps((s) => !s);
             if (!showManualComps && manualComps.length === 0) addComp();
           }}
+          aria-expanded={showManualComps}
           className={`mb-3 ${linkBtn}`}
         >
-          {showManualComps ? '− Hide' : '+ Add'} manual comps as fallback
+          {showManualComps ? '▾ Hide' : '▸ Add'} manual comps as fallback
         </button>
         {showManualComps && (
           <div className="space-y-4">

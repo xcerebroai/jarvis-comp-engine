@@ -132,19 +132,21 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
                 </p>
               </div>
             </div>
-            <div className="hidden shrink-0 gap-2 sm:flex">
+            <div className="flex shrink-0 gap-2">
               <button
                 type="button"
                 onClick={() => setHelpOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-cyan-400/40 hover:text-cyan-200"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.03] px-2.5 py-1.5 text-xs font-medium text-slate-200 transition hover:border-cyan-400/40 hover:text-cyan-200 sm:px-3"
+                aria-label="How it works"
               >
-                <HelpIcon className="h-4 w-4" /> How it works
+                <HelpIcon className="h-4 w-4" /> <span className="hidden sm:inline">How it works</span>
               </button>
               <Link
                 href="/settings/providers"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-violet-400/40 hover:text-violet-200"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.03] px-2.5 py-1.5 text-xs font-medium text-slate-200 transition hover:border-violet-400/40 hover:text-violet-200 sm:px-3"
+                aria-label="Provider Settings"
               >
-                <PlugIcon className="h-4 w-4" /> Provider Settings
+                <PlugIcon className="h-4 w-4" /> <span className="hidden sm:inline">Provider Settings</span>
               </Link>
             </div>
           </div>
@@ -162,9 +164,10 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
         {IS_PAGES && (
           <div className="mb-4">
-            <WarningBanner tone="amber" icon={<WarningIcon className="h-5 w-5" />} title="GitHub Pages Demo">
-              This hosted version runs fully in-browser using mock property/comparable data.{' '}
-              <span className="font-semibold">Do not use this valuation for real offers.</span>
+            <WarningBanner tone="amber" icon={<WarningIcon className="h-5 w-5" />} title="Static Public Demo — Mock Data Only">
+              This hosted version runs fully in your browser using simulated property and comparable
+              data. Nothing here reflects a real market.{' '}
+              <span className="font-semibold">Do not use these numbers for real offers.</span>
             </WarningBanner>
           </div>
         )}
@@ -192,9 +195,16 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
         )}
 
         {loading && (
-          <div className="mt-6 flex items-center justify-center gap-3 text-sm text-cyan-200/80">
-            <span className="status-dot h-2 w-2 rounded-full bg-cyan-400" />
-            Running comps, ARV, repairs, risk, confidence, and all offer strategies…
+          <div
+            className="glow-border mt-6 flex items-center justify-center gap-3 rounded-2xl bg-white/[0.025] px-4 py-5 text-sm text-cyan-200/90"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="spinner h-4 w-4 shrink-0 rounded-full border-2 border-cyan-400/30 border-t-cyan-300" />
+            <span>
+              <span className="font-semibold text-cyan-100">Running acquisition analysis</span>
+              <span className="hidden sm:inline"> — comps, ARV, repairs, risk, confidence, and all offer strategies.</span>
+            </span>
           </div>
         )}
 
