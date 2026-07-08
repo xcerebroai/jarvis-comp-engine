@@ -1,0 +1,24 @@
+// Saved analyses — SQLite locally; point DATABASE_URL at a mounted volume on
+// Railway. The full AnalysisResult is stored as JSON alongside the summary
+// columns the list view needs.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Analysis {
+  id                  String   @id
+  createdAt           DateTime @default(now())
+  address             String
+  conservativeArv     Int
+  repairEstimate      Int
+  recommendedStrategy String
+  riskLevel           String
+  confidenceScore     Int
+  usedMockProvider    Boolean  @default(false)
+  resultJson          String
+}

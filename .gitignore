@@ -44,3 +44,7 @@ next-env.d.ts
 
 # DealMachine API responses — licensed data, never redistribute (repo is public)
 fixtures/
+
+# local SQLite database
+prisma/dev.db*
+dev.db*

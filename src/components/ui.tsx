@@ -6,10 +6,10 @@
 
 import type { ReactNode } from 'react';
 
-export type Tone = 'cyan' | 'violet' | 'emerald' | 'amber' | 'red' | 'slate';
+export type Tone = 'blue' | 'violet' | 'emerald' | 'amber' | 'red' | 'slate';
 
 const GLOW: Record<Tone, string> = {
-  cyan: 'glow-cyan',
+  blue: 'glow-blue',
   violet: 'glow-violet',
   emerald: 'glow-emerald',
   amber: 'glow-amber',
@@ -18,7 +18,7 @@ const GLOW: Record<Tone, string> = {
 };
 
 const ICON_TONE: Record<Tone, string> = {
-  cyan: 'text-cyan-300 border-cyan-400/30',
+  blue: 'text-blue-300 border-blue-400/30',
   violet: 'text-violet-300 border-violet-400/30',
   emerald: 'text-emerald-300 border-emerald-400/30',
   amber: 'text-amber-300 border-amber-400/30',
@@ -27,7 +27,7 @@ const ICON_TONE: Record<Tone, string> = {
 };
 
 const DOT_TONE: Record<Tone, string> = {
-  cyan: 'bg-cyan-400',
+  blue: 'bg-blue-400',
   violet: 'bg-violet-400',
   emerald: 'bg-emerald-400',
   amber: 'bg-amber-400',
@@ -65,7 +65,7 @@ export function CommandCard({
 }
 
 /** Icon in a glowing rounded tile. Pass an inline SVG as `icon`. */
-export function GlowIcon({ icon, tone = 'cyan', size = 'md' }: { icon: ReactNode; tone?: Tone; size?: 'sm' | 'md' }) {
+export function GlowIcon({ icon, tone = 'blue', size = 'md' }: { icon: ReactNode; tone?: Tone; size?: 'sm' | 'md' }) {
   const box = size === 'sm' ? 'h-8 w-8' : 'h-10 w-10';
   const svg = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
   return (
@@ -80,7 +80,7 @@ export function GlowIcon({ icon, tone = 'cyan', size = 'md' }: { icon: ReactNode
 /** Section header: glowing icon + optional step + uppercase title + subtitle. */
 export function SectionHeader({
   icon,
-  tone = 'cyan',
+  tone = 'blue',
   step,
   title,
   subtitle,
@@ -99,7 +99,7 @@ export function SectionHeader({
         {icon && <GlowIcon icon={icon} tone={tone} />}
         <div>
           <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-            {step != null && <span className="label-term text-cyan-300/80">{step}</span>}
+            {step != null && <span className="label-term text-blue-300/80">{step}</span>}
             <span className="tracking-wide">{title}</span>
           </h2>
           {subtitle && <p className="mt-0.5 text-sm text-slate-400">{subtitle}</p>}
@@ -116,7 +116,7 @@ export function Section({
   title,
   subtitle,
   icon,
-  tone = 'cyan',
+  tone = 'blue',
   right,
   children,
 }: {
@@ -139,7 +139,7 @@ export function Section({
 /* -------------------------------- Status -------------------------------- */
 
 /** Terminal status pill: pulsing dot + label + value. */
-export function StatusPill({ label, value, tone = 'cyan' }: { label: string; value: string; tone?: Tone }) {
+export function StatusPill({ label, value, tone = 'blue' }: { label: string; value: string; tone?: Tone }) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1">
       <span className={`status-dot h-1.5 w-1.5 rounded-full ${DOT_TONE[tone]}`} />
@@ -227,7 +227,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 const inputBase =
-  'w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/15';
+  'w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/15';
 
 export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${inputBase} ${props.className ?? ''}`} />;
@@ -268,10 +268,10 @@ export function Badge({ children, className = '' }: { children: ReactNode; class
 }
 
 /** A 0–100 score bar with a numeric label — dark track, glowing fill. */
-export function ScoreBar({ score, tone = 'cyan' }: { score: number; tone?: string }) {
+export function ScoreBar({ score, tone = 'blue' }: { score: number; tone?: string }) {
   const toneMap: Record<string, string> = {
-    cyan: 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.6)]',
-    indigo: 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.6)]',
+    blue: 'bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.6)]',
+    indigo: 'bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.6)]',
     emerald: 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)]',
     amber: 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.6)]',
     red: 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.6)]',
@@ -280,7 +280,7 @@ export function ScoreBar({ score, tone = 'cyan' }: { score: number; tone?: strin
     <div className="flex items-center gap-2">
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
         <div
-          className={`h-full rounded-full transition-[width] duration-300 ${toneMap[tone] ?? toneMap.cyan}`}
+          className={`h-full rounded-full transition-[width] duration-300 ${toneMap[tone] ?? toneMap.blue}`}
           style={{ width: `${Math.max(0, Math.min(100, score))}%` }}
         />
       </div>

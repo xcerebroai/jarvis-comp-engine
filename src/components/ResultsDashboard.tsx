@@ -38,7 +38,7 @@ const confTone = (s: number) => (s >= 70 ? 'emerald' : s >= 45 ? 'amber' : 'red'
 
 const DISPOSITION_TONE: Record<CompDisposition, string> = {
   qualified: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/30',
-  support: 'text-cyan-300 bg-cyan-400/10 border-cyan-400/30',
+  support: 'text-blue-300 bg-blue-400/10 border-blue-400/30',
   penalized: 'text-amber-300 bg-amber-400/10 border-amber-400/30',
   rejected: 'text-slate-400 bg-white/5 border-white/10',
 };
@@ -90,7 +90,7 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <MetricCard label="Conservative ARV" value={money(arv.conservative)} tone="emerald" icon={<ShieldIcon />} />
         <MetricCard label="Repair Estimate" value={money(repairEstimate.recommended)} tone="violet" icon={<ToolsIcon />} />
-        <MetricCard label="Strategy" value={recommendation.label} tone="cyan" icon={<TargetIcon />} />
+        <MetricCard label="Strategy" value={recommendation.label} tone="blue" icon={<TargetIcon />} />
         <MetricCard
           label="Risk"
           value={`${risk.level.replace('_', ' ')}`}
@@ -113,7 +113,7 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
       </div>
 
       {/* 1 — Property Snapshot */}
-      <Section step="01" icon={<LocationIcon />} tone="cyan" title="Property Snapshot">
+      <Section step="01" icon={<LocationIcon />} tone="blue" title="Property Snapshot">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="col-span-2 sm:col-span-4">
             <div className="text-base font-semibold text-slate-50">{result.address.formatted || 'Address unavailable'}</div>
@@ -188,7 +188,7 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
       <Section
         step="04"
         icon={<ChartIcon />}
-        tone="cyan"
+        tone="blue"
         title="Comparable Sales"
         subtitle={`${qualified.length} qualified · ${support.length} active support · ${rejected.length} penalized/rejected`}
       >
@@ -219,7 +219,7 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
       {/* 6 — Recommended Strategy */}
       <Section step="06" icon={<TargetIcon />} tone="emerald" title="Recommended Strategy">
         <div className="flex items-center gap-3">
-          <Badge className="border-cyan-400/40 bg-cyan-400/10 text-base font-bold text-cyan-200 glow-cyan">{recommendation.label}</Badge>
+          <Badge className="border-blue-400/40 bg-blue-400/10 text-base font-bold text-blue-200 glow-blue">{recommendation.label}</Badge>
         </div>
         <p className="mt-2 text-sm text-slate-300">{recommendation.summary}</p>
         <ul className="mt-3 space-y-1 text-sm text-slate-400">
@@ -236,7 +236,7 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
       </Section>
 
       {/* 7 — Deal Memo */}
-      <DealMemoBlock memo={memo} />
+      <DealMemoBlock memo={memo} memoProse={result.memoProse} />
 
       {/* 8 — Data Sources & Providers */}
       <DataSourcesBlock result={result} />
@@ -292,14 +292,14 @@ function OfferCard({ o, recommended }: { o: OfferResult; recommended: boolean })
   const isHold = o.strategy === 'subject_to' || o.strategy === 'creative_finance';
   return (
     <CommandCard
-      tone={recommended ? 'cyan' : 'slate'}
+      tone={recommended ? 'blue' : 'slate'}
       glow={recommended}
-      className={`p-4 ${recommended ? 'border-cyan-400/50' : ''}`}
+      className={`p-4 ${recommended ? 'border-blue-400/50' : ''}`}
     >
       <div className="mb-3 flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-sm font-bold text-slate-50">{STRATEGY_LABEL[o.strategy]}</h3>
-          {recommended && <Badge className="border-cyan-400/50 bg-cyan-400/15 text-cyan-200 glow-cyan">Recommended Strategy</Badge>}
+          {recommended && <Badge className="border-blue-400/50 bg-blue-400/15 text-blue-200 glow-blue">Recommended Strategy</Badge>}
           {!o.viable && <Badge className="border-white/10 bg-white/5 text-slate-400">marginal</Badge>}
         </div>
         <Badge className={RISK_TONE[o.riskLevel]}>{o.riskLevel.replace('_', ' ')}</Badge>
@@ -354,11 +354,11 @@ function OfferCard({ o, recommended }: { o: OfferResult; recommended: boolean })
   );
 }
 
-function DealMemoBlock({ memo }: { memo: AnalysisResult['memo'] }) {
+function DealMemoBlock({ memo, memoProse }: { memo: AnalysisResult['memo']; memoProse?: string }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
-      await navigator.clipboard.writeText(memo.plainText);
+      await navigator.clipboard.writeText(memoProse ? `${memoProse}\n\n---\n${memo.plainText}` : memo.plainText);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -369,7 +369,7 @@ function DealMemoBlock({ memo }: { memo: AnalysisResult['memo'] }) {
     <Section
       step="07"
       icon={<DollarIcon />}
-      tone="cyan"
+      tone="blue"
       title="Deal Memo"
       right={
         <button
@@ -379,7 +379,7 @@ function DealMemoBlock({ memo }: { memo: AnalysisResult['memo'] }) {
           className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
             copied
               ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
-              : 'border-white/15 bg-white/[0.03] text-slate-200 hover:border-cyan-400/40 hover:text-cyan-200'
+              : 'border-white/15 bg-white/[0.03] text-slate-200 hover:border-blue-400/40 hover:text-blue-200'
           }`}
         >
           {copied ? 'Copied ✓' : 'Copy memo'}
@@ -392,6 +392,12 @@ function DealMemoBlock({ memo }: { memo: AnalysisResult['memo'] }) {
         </p>
       )}
       <p className="mb-3 text-sm font-medium text-slate-200">{memo.headline}</p>
+      {memoProse && (
+        <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <div className="label-term mb-1">Analyst Narrative (AI prose — numbers from the deterministic engine)</div>
+          <p className="text-sm whitespace-pre-line text-slate-200">{memoProse}</p>
+        </div>
+      )}
       <div className="space-y-3">
         {memo.sections.map((s) => (
           <div key={s.title}>
@@ -437,7 +443,7 @@ function DataSourcesBlock({ result }: { result: AnalysisResult }) {
             </div>
             <div className="flex shrink-0 gap-1.5">
               {p.active && <Badge className="border-emerald-400/30 bg-emerald-400/10 text-emerald-300">active</Badge>}
-              <Badge className={p.configured ? 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-400'}>
+              <Badge className={p.configured ? 'border-blue-400/30 bg-blue-400/10 text-blue-300' : 'border-white/10 bg-white/5 text-slate-400'}>
                 {p.configured ? 'configured' : 'not configured'}
               </Badge>
             </div>

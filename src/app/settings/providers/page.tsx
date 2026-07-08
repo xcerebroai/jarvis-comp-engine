@@ -42,16 +42,16 @@ export default function ProviderSettingsPage() {
     <div className="min-h-screen text-slate-100">
       <header className="border-b border-white/5">
         <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-medium text-cyan-300 transition hover:text-cyan-200">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-300 transition hover:text-blue-200">
             <ArrowRightIcon className="h-3.5 w-3.5 rotate-180" /> Back to analyzer
           </Link>
           <div className="mt-2 flex items-center gap-3">
-            <span className="glow-cyan inline-flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-white/[0.03] text-cyan-300">
+            <span className="glow-blue inline-flex h-10 w-10 items-center justify-center rounded-xl border border-blue-400/30 bg-white/[0.03] text-blue-300">
               <PlugIcon className="h-5 w-5" />
             </span>
             <div>
               <h1 className="text-lg font-bold text-slate-50">Provider Settings</h1>
-              <p className="label-term text-cyan-300/80">Data Sourcing Configuration</p>
+              <p className="label-term text-blue-300/80">Data Sourcing Configuration</p>
             </div>
           </div>
           <p className="mt-3 max-w-2xl text-sm text-slate-400">
@@ -104,7 +104,7 @@ export default function ProviderSettingsPage() {
             const accent = c.active
               ? 'border-emerald-400/30 glow-emerald'
               : c.configured
-                ? 'border-cyan-400/25'
+                ? 'border-blue-400/25'
                 : 'border-white/10';
             return (
               <div key={`${c.type}-${c.name}`} className={`rounded-2xl border bg-white/[0.025] p-5 backdrop-blur-sm ${accent}`}>
@@ -122,7 +122,7 @@ export default function ProviderSettingsPage() {
                     <span
                       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
                         c.configured
-                          ? 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300'
+                          ? 'border-blue-400/30 bg-blue-400/10 text-blue-300'
                           : 'border-white/10 bg-white/5 text-slate-400'
                       }`}
                     >
@@ -146,7 +146,7 @@ export default function ProviderSettingsPage() {
                   <div className="label-term">Required env</div>
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {c.requiredEnv.map((e) => (
-                      <code key={e} className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-cyan-200/90">{e}</code>
+                      <code key={e} className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-blue-200/90">{e}</code>
                     ))}
                     {c.optionalEnv.map((e) => (
                       <code key={e} className="rounded bg-white/[0.03] px-1.5 py-0.5 text-[11px] text-slate-500">{e} (optional)</code>

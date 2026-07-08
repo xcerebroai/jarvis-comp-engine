@@ -18,7 +18,7 @@ export function ProviderStrip({ status }: { status: ProviderStatus }) {
   return (
     <Link
       href="/settings/providers"
-      className="group flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5 backdrop-blur-sm transition hover:border-cyan-400/30"
+      className="group flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5 backdrop-blur-sm transition hover:border-blue-400/30"
       title="Open provider settings"
     >
       {IS_PAGES ? (
@@ -39,11 +39,11 @@ export function ProviderStrip({ status }: { status: ProviderStatus }) {
           ) : (
             <StatusPill label="Active" value={active.length ? active.join(', ') : 'None'} tone={active.length ? 'emerald' : 'red'} />
           )}
-          <StatusPill label="Data Confidence" value={mock ? 'Testing Only' : 'Live'} tone={mock ? 'red' : 'cyan'} />
+          <StatusPill label="Data Confidence" value={mock ? 'Testing Only' : 'Live'} tone={mock ? 'red' : 'blue'} />
         </>
       )}
       <StatusPill label="No-Scraping Boundary" value="Active" tone="emerald" />
-      <span className="ml-auto hidden text-xs font-medium text-cyan-300/70 transition group-hover:text-cyan-300 sm:block">
+      <span className="ml-auto hidden text-xs font-medium text-blue-300/70 transition group-hover:text-blue-300 sm:block">
         Provider Status →
       </span>
     </Link>

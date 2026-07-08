@@ -25,7 +25,7 @@ import {
   REPAIR_CATEGORY_LABEL,
   REPAIR_LEVEL_LABEL,
 } from '@/lib/labels';
-import { BoltIcon, DatabaseIcon, DollarIcon, LocationIcon, ToolsIcon } from './icons';
+import { BoltIcon, DatabaseIcon, DollarIcon, LocationIcon, SparkIcon, ToolsIcon } from './icons';
 import { Field, Section, Select, TextArea, TextInput } from './ui';
 
 const toNum = (s: string): number | undefined => {
@@ -57,7 +57,19 @@ function toCompInput(row: CompRow): CompInput {
   };
 }
 
-const linkBtn = 'text-sm font-medium text-cyan-300 transition hover:text-cyan-200';
+const linkBtn = 'text-sm font-medium text-blue-300 transition hover:text-blue-200';
+
+// The paste-parser needs the server (Claude API) — hidden in the static demo.
+const IS_PAGES = process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true';
+
+/** Shape returned by POST /api/parse-notes (subset of AnalysisInput). */
+interface ParsedNotes {
+  address?: { fullAddress?: string };
+  repairs?: { rehabLevel?: RehabLevel; repairNotes?: string; knownMajorRepairs?: string };
+  sellerInfo?: Record<string, number | string | undefined>;
+  manualComps?: CompInput[];
+  parserNotes?: string[];
+}
 
 export function IntakeForm({
   loading,
@@ -88,6 +100,72 @@ export function IntakeForm({
   const updateComp = (i: number, k: string, v: string) =>
     setManualComps((p) => p.map((row, idx) => (idx === i ? { ...row, [k]: v } : row)));
   const removeComp = (i: number) => setManualComps((p) => p.filter((_, idx) => idx !== i));
+
+  // Paste-anything parser (Claude) with a confirm step before applying.
+  const [pasteText, setPasteText] = useState('');
+  const [parsing, setParsing] = useState(false);
+  const [parsed, setParsed] = useState<ParsedNotes | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  async function runParse() {
+    setParsing(true);
+    setParseError(null);
+    setParsed(null);
+    try {
+      const res = await fetch('/api/parse-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: pasteText }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error ?? 'Parsing failed.');
+      setParsed(json.parsed as ParsedNotes);
+    } catch (e) {
+      setParseError(e instanceof Error ? e.message : 'Parsing failed.');
+    } finally {
+      setParsing(false);
+    }
+  }
+
+  /** Apply confirmed fields into the form state. Nothing applies without this. */
+  function applyParsed() {
+    if (!parsed) return;
+    if (parsed.address?.fullAddress) setFullAddress(parsed.address.fullAddress);
+    if (parsed.repairs?.rehabLevel) setRehabLevel(parsed.repairs.rehabLevel);
+    if (parsed.repairs?.repairNotes) setRepairNotes(parsed.repairs.repairNotes);
+    if (parsed.repairs?.knownMajorRepairs) setKnownMajorRepairs(parsed.repairs.knownMajorRepairs);
+    if (parsed.sellerInfo && Object.keys(parsed.sellerInfo).length) {
+      setShowSeller(true);
+      setSeller((prev) => {
+        const next = { ...prev };
+        for (const [k, v] of Object.entries(parsed.sellerInfo!)) {
+          if (v !== undefined && v !== null) next[k] = String(v);
+        }
+        return next;
+      });
+    }
+    if (parsed.manualComps?.length) {
+      setShowManualComps(true);
+      setManualComps(
+        parsed.manualComps.map((c) => ({
+          address: c.address ?? '',
+          soldPrice: c.soldPrice != null ? String(c.soldPrice) : '',
+          soldDate: c.soldDate ?? '',
+          beds: c.beds != null ? String(c.beds) : '',
+          baths: c.baths != null ? String(c.baths) : '',
+          sqft: c.sqft != null ? String(c.sqft) : '',
+          yearBuilt: c.yearBuilt != null ? String(c.yearBuilt) : '',
+          distanceMiles: c.distanceMiles != null ? String(c.distanceMiles) : '',
+          condition: c.condition ?? 'unknown',
+          status: c.status ?? 'sold',
+          source: c.source ?? '',
+          notes: c.notes ?? '',
+        })),
+      );
+    }
+    setParsed(null);
+    setPasteText('');
+  }
 
   const canSubmit = Boolean(fullAddress.trim() || (street.trim() && (city.trim() || zip.trim())));
 
@@ -134,13 +212,80 @@ export function IntakeForm({
 
   return (
     <div className="space-y-4">
+      {/* SECTION 0 — Paste Anything (Claude parses; you confirm before applying) */}
+      {!IS_PAGES && (
+        <Section
+          icon={<SparkIcon />}
+          tone="violet"
+          title="Paste Anything"
+          subtitle="Drop in listing text, seller notes, county records, or inspection notes — AI extracts the fields, you confirm before anything is applied. It never touches the valuation math."
+        >
+          <TextArea
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            placeholder="Paste raw notes here… e.g. 'Seller asking 240k, owes 180k on the mortgage, PITI 1450/mo, behind 3 payments. Roof is shot, kitchen original 1978…'"
+          />
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              disabled={parsing || pasteText.trim().length < 10}
+              onClick={runParse}
+              className="rounded-xl border border-violet-400/40 bg-violet-400/10 px-4 py-2 text-sm font-semibold text-violet-200 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-slate-500"
+            >
+              {parsing ? 'Parsing…' : 'Parse with AI'}
+            </button>
+            {parseError && <span className="text-xs text-red-300">{parseError}</span>}
+          </div>
+
+          {parsed && (
+            <div className="mt-4 rounded-xl border border-violet-400/30 bg-violet-500/10 p-4">
+              <p className="label-term text-violet-200">Confirm extracted fields</p>
+              <ul className="mt-2 space-y-1 text-sm text-slate-200">
+                {parsed.address?.fullAddress && <li>• Address: {parsed.address.fullAddress}</li>}
+                {parsed.repairs?.rehabLevel && <li>• Rehab level: {parsed.repairs.rehabLevel.replace('_', ' ')}</li>}
+                {parsed.repairs?.repairNotes && <li>• Repair notes: {parsed.repairs.repairNotes}</li>}
+                {parsed.repairs?.knownMajorRepairs && <li>• Major repairs: {parsed.repairs.knownMajorRepairs}</li>}
+                {parsed.sellerInfo &&
+                  Object.entries(parsed.sellerInfo).map(([k, v]) =>
+                    v !== undefined && v !== null ? <li key={k}>• {k}: {String(v)}</li> : null,
+                  )}
+                {parsed.manualComps?.length ? <li>• {parsed.manualComps.length} comp(s) extracted</li> : null}
+              </ul>
+              {parsed.parserNotes && parsed.parserNotes.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-xs text-amber-300/90">
+                  {parsed.parserNotes.map((n, i) => (
+                    <li key={i}>⚠︎ Verify: {n}</li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={applyParsed}
+                  className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-400/20"
+                >
+                  Apply fields
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setParsed(null)}
+                  className="rounded-lg border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:text-red-300"
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          )}
+        </Section>
+      )}
+
       {/* SECTION 1 — Address */}
       <Section
         step={1}
         icon={<LocationIcon />}
-        tone="cyan"
+        tone="blue"
         title="Property Address"
-        subtitle="Start with an address. The system pulls from configured legal data providers, or uses mock mode for testing."
+        subtitle="Start with an address. The system pulls live data from licensed providers — no samples, no scraping."
       >
         <div className="space-y-3">
           <Field label="Full address" hint="e.g. 123 Main St, Austin, TX 78701">
@@ -182,8 +327,8 @@ export function IntakeForm({
                   onClick={() => setRehabLevel(rehabLevel === lvl ? '' : lvl)}
                   className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
                     rehabLevel === lvl
-                      ? 'border-cyan-400/60 bg-cyan-400/15 text-cyan-100 glow-cyan'
-                      : 'border-white/12 bg-white/[0.03] text-slate-300 hover:border-cyan-400/40 hover:text-slate-100'
+                      ? 'border-blue-400/60 bg-blue-400/15 text-blue-100 glow-blue'
+                      : 'border-white/12 bg-white/[0.03] text-slate-300 hover:border-blue-400/40 hover:text-slate-100'
                   }`}
                 >
                   {REHAB_LEVEL_LABEL[lvl]}
@@ -271,7 +416,7 @@ export function IntakeForm({
       <Section
         step={4}
         icon={<DatabaseIcon />}
-        tone="cyan"
+        tone="blue"
         title="Manual Comps Fallback"
         subtitle="Fallback only — use manual comps when provider comps are unavailable, or to override/support the analysis."
       >
@@ -337,7 +482,7 @@ export function IntakeForm({
           type="button"
           disabled={!canSubmit || loading}
           onClick={submit}
-          className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-cyan-400/50 bg-gradient-to-r from-cyan-500/20 via-cyan-400/15 to-violet-500/20 py-4 text-base font-bold text-cyan-50 transition glow-cyan hover:from-cyan-500/30 hover:to-violet-500/30 disabled:cursor-not-allowed disabled:border-white/10 disabled:from-white/5 disabled:to-white/5 disabled:text-slate-500 disabled:shadow-none"
+          className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-blue-400/50 bg-gradient-to-r from-blue-500/20 via-blue-400/15 to-violet-500/20 py-4 text-base font-bold text-blue-50 transition glow-blue hover:from-blue-500/30 hover:to-violet-500/30 disabled:cursor-not-allowed disabled:border-white/10 disabled:from-white/5 disabled:to-white/5 disabled:text-slate-500 disabled:shadow-none"
         >
           <BoltIcon className="h-5 w-5" />
           {loading ? 'Analyzing…' : 'Analyze Property'}

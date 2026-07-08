@@ -51,7 +51,7 @@ export function OnboardingModal({
       onClick={onClose}
     >
       <div
-        className="glow-border glow-cyan relative w-full max-w-lg rounded-2xl bg-[#0a1120]/95 p-6 sm:p-7"
+        className="glow-border glow-blue relative w-full max-w-lg rounded-2xl bg-[#0F172A]/95 p-6 sm:p-7"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -64,12 +64,12 @@ export function OnboardingModal({
         </button>
 
         <div className="flex items-center gap-3">
-          <GlowIcon icon={<SparkIcon />} tone="cyan" />
+          <GlowIcon icon={<SparkIcon />} tone="blue" />
           <div>
             <h2 id="onboarding-title" className="text-lg font-bold text-slate-50">
               Welcome to Jarvis Comp Engine
             </h2>
-            <p className="label-term text-cyan-300/80">Autopilot Acquisition Analyst</p>
+            <p className="label-term text-blue-300/80">Autopilot Acquisition Analyst</p>
           </div>
         </div>
 
@@ -88,7 +88,7 @@ export function OnboardingModal({
         <ol className="mt-4 space-y-2">
           {STEPS.map((s, i) => (
             <li key={i} className="flex items-start gap-3 text-sm text-slate-200">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-cyan-400/40 bg-cyan-400/10 text-[11px] font-bold text-cyan-300">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-blue-400/40 bg-blue-400/10 text-[11px] font-bold text-blue-300">
                 {i + 1}
               </span>
               {s}
@@ -100,7 +100,7 @@ export function OnboardingModal({
           <button
             type="button"
             onClick={onStart}
-            className="glow-cyan inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-400/15 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/25"
+            className="glow-blue inline-flex items-center justify-center gap-2 rounded-xl border border-blue-400/40 bg-blue-400/15 px-4 py-2.5 text-sm font-semibold text-blue-100 transition hover:bg-blue-400/25"
           >
             Start Analysis <ArrowRightIcon className="h-4 w-4" />
           </button>

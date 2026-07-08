@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server';
 import { runPropertyAnalysis } from '@/lib/analysis/runPropertyAnalysis';
 import { getProviderStatus, NO_PROVIDER_MESSAGE } from '@/lib/data-providers/providerStatus';
+import { claudeConfigured, generateMemoProse } from '@/lib/claude';
 import type { AnalysisInput } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -40,6 +41,17 @@ export async function POST(req: Request) {
 
   try {
     const result = await runPropertyAnalysis(input);
+
+    // Optional Claude prose pass — prose only, numbers stay deterministic.
+    // Any failure falls back silently to the templated memo.
+    if (claudeConfigured()) {
+      try {
+        result.memoProse = await generateMemoProse(result);
+      } catch {
+        /* deterministic memo remains the source of truth */
+      }
+    }
+
     return NextResponse.json(result);
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Analysis failed.';

@@ -6,7 +6,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { AnalysisInput, AnalysisResult, ProviderStatus } from '@/lib/types';
 import {
   addSaved,
@@ -50,7 +50,11 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  const saved = useSyncExternalStore(subscribeSaved, getSavedSnapshot, getServerSavedSnapshot);
+  // Persistence: SQLite via the server API in real mode; localStorage only in
+  // the static Pages demo (which has no server).
+  const [serverSaved, setServerSaved] = useState<SavedAnalysis[]>([]);
+  const localSaved = useSyncExternalStore(subscribeSaved, getSavedSnapshot, getServerSavedSnapshot);
+  const saved = IS_PAGES ? localSaved : serverSaved;
   const onboardingDismissed = useSyncExternalStore(
     subscribeOnboarding,
     getOnboardingSnapshot,
@@ -58,6 +62,20 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
   );
 
   const mock = providerStatus.mockProviderEnabled;
+
+  useEffect(() => {
+    if (IS_PAGES) return;
+    let alive = true;
+    fetch('/api/analyses')
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => {
+        if (alive) setServerSaved(d.items ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   async function analyze(input: AnalysisInput) {
     setLoading(true);
@@ -89,10 +107,22 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!result) return;
     const id = newId();
-    addSaved(result, id, new Date().toISOString());
+    const createdAt = new Date().toISOString();
+    if (IS_PAGES) {
+      addSaved(result, id, createdAt);
+    } else {
+      const res = await fetch('/api/analyses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, createdAt, result }),
+      });
+      if (!res.ok) return;
+      const list = await fetch('/api/analyses').then((r) => r.json());
+      setServerSaved(list.items ?? []);
+    }
     setSavedId(id);
   }
 
@@ -103,8 +133,13 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
     scrollToResults();
   }
 
-  function handleDelete(id: string) {
-    removeSaved(id);
+  async function handleDelete(id: string) {
+    if (IS_PAGES) {
+      removeSaved(id);
+    } else {
+      await fetch(`/api/analyses/${id}`, { method: 'DELETE' });
+      setServerSaved((prev) => prev.filter((s) => s.summary.id !== id));
+    }
     if (savedId === id) setSavedId(null);
   }
 
@@ -120,12 +155,12 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4">
-              <GlowIcon icon={<SparkIcon />} tone="cyan" />
+              <GlowIcon icon={<SparkIcon />} tone="blue" />
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-50 text-glow sm:text-3xl">
                   Jarvis Comp Engine
                 </h1>
-                <p className="label-term mt-1 text-cyan-300/80">Autopilot Acquisition Analyst</p>
+                <p className="label-term mt-1 text-blue-300/80">Autopilot Acquisition Analyst</p>
                 <p className="mt-2 max-w-2xl text-sm text-slate-400">
                   Analyze single-family deals using provider data, conservative comp logic, repair
                   estimates, and strategy-specific offer engines.
@@ -136,7 +171,7 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
               <button
                 type="button"
                 onClick={() => setHelpOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.03] px-2.5 py-1.5 text-xs font-medium text-slate-200 transition hover:border-cyan-400/40 hover:text-cyan-200 sm:px-3"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.03] px-2.5 py-1.5 text-xs font-medium text-slate-200 transition hover:border-blue-400/40 hover:text-blue-200 sm:px-3"
                 aria-label="How it works"
               >
                 <HelpIcon className="h-4 w-4" /> <span className="hidden sm:inline">How it works</span>
@@ -154,7 +189,7 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
           {/* Status pills */}
           <div className="mt-6 flex flex-wrap gap-2">
             <StatusPill label="Provider Mode" value={mock ? 'Mock Data' : 'Real Data'} tone={mock ? 'amber' : 'emerald'} />
-            <StatusPill label="Data Confidence" value={mock ? 'Testing Only' : 'Live'} tone={mock ? 'red' : 'cyan'} />
+            <StatusPill label="Data Confidence" value={mock ? 'Testing Only' : 'Live'} tone={mock ? 'red' : 'blue'} />
             <StatusPill label="Saved Analyses" value={String(saved.length)} tone="violet" />
             <StatusPill label="No-Scraping Boundary" value="Active" tone="emerald" />
           </div>
@@ -196,13 +231,13 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
 
         {loading && (
           <div
-            className="glow-border mt-6 flex items-center justify-center gap-3 rounded-2xl bg-white/[0.025] px-4 py-5 text-sm text-cyan-200/90"
+            className="glow-border mt-6 flex items-center justify-center gap-3 rounded-2xl bg-white/[0.025] px-4 py-5 text-sm text-blue-200/90"
             role="status"
             aria-live="polite"
           >
-            <span className="spinner h-4 w-4 shrink-0 rounded-full border-2 border-cyan-400/30 border-t-cyan-300" />
+            <span className="spinner h-4 w-4 shrink-0 rounded-full border-2 border-blue-400/30 border-t-blue-300" />
             <span>
-              <span className="font-semibold text-cyan-100">Running acquisition analysis</span>
+              <span className="font-semibold text-blue-100">Running acquisition analysis</span>
               <span className="hidden sm:inline"> — comps, ARV, repairs, risk, confidence, and all offer strategies.</span>
             </span>
           </div>
@@ -212,14 +247,14 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
           <div id="results" className="mt-8 scroll-mt-6">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <ArchiveIcon className="h-4 w-4 text-cyan-300" />
+                <ArchiveIcon className="h-4 w-4 text-blue-300" />
                 <h2 className="label-term text-slate-300">Acquisition Analysis</h2>
               </div>
               <button
                 type="button"
                 onClick={handleSave}
                 disabled={savedId != null}
-                className="shrink-0 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-400/20 disabled:cursor-default disabled:border-emerald-400/40 disabled:bg-emerald-400/10 disabled:text-emerald-300"
+                className="shrink-0 rounded-xl border border-blue-400/40 bg-blue-400/10 px-3 py-1.5 text-xs font-semibold text-blue-200 transition hover:bg-blue-400/20 disabled:cursor-default disabled:border-emerald-400/40 disabled:bg-emerald-400/10 disabled:text-emerald-300"
               >
                 {savedId != null ? 'Saved ✓' : 'Save Analysis'}
               </button>
@@ -245,7 +280,7 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
       <button
         type="button"
         onClick={() => setHelpOpen(true)}
-        className="glow-cyan fixed right-4 bottom-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full border border-cyan-400/40 bg-[#0a1120]/90 text-cyan-200 backdrop-blur transition hover:bg-cyan-400/20"
+        className="glow-blue fixed right-4 bottom-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full border border-blue-400/40 bg-[#0F172A]/90 text-blue-200 backdrop-blur transition hover:bg-blue-400/20"
         aria-label="How it works"
         title="How it works"
       >

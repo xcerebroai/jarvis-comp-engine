@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #060912;
+  --background: #0A0A0A;
   --foreground: #e6edf6;
 }
 
@@ -20,13 +20,13 @@ html {
 body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  background-color: #060912;
+  background-color: #0A0A0A;
   /* Layered radial accent glows + a faint terminal grid. */
   background-image:
-    radial-gradient(60rem 40rem at 85% -10%, rgba(56, 189, 248, 0.10), transparent 60%),
+    radial-gradient(60rem 40rem at 85% -10%, rgba(59, 130, 246, 0.12), transparent 60%),
     radial-gradient(50rem 40rem at 10% 0%, rgba(167, 139, 250, 0.10), transparent 55%),
     radial-gradient(40rem 30rem at 50% 120%, rgba(52, 211, 153, 0.06), transparent 60%),
-    linear-gradient(to bottom, #070b16, #05070f);
+    linear-gradient(to bottom, #0F172A, #0A0A0A);
   background-attachment: fixed;
 }
 
@@ -38,8 +38,8 @@ body::before {
   z-index: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(120, 170, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 170, 255, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(96, 165, 250, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(96, 165, 250, 0.05) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(120% 80% at 50% 0%, #000 40%, transparent 100%);
 }
@@ -58,8 +58,8 @@ body > * {
       0 0 0 1px rgba(10, 20, 40, 0.4) inset,
       0 8px 30px -12px rgba(0, 0, 0, 0.8);
   }
-  .glow-cyan {
-    box-shadow: 0 0 22px -6px rgba(34, 211, 238, 0.55), 0 0 0 1px rgba(34, 211, 238, 0.25) inset;
+  .glow-blue {
+    box-shadow: 0 0 22px -6px rgba(96, 165, 250, 0.55), 0 0 0 1px rgba(96, 165, 250, 0.25) inset;
   }
   .glow-violet {
     box-shadow: 0 0 22px -6px rgba(167, 139, 250, 0.55), 0 0 0 1px rgba(167, 139, 250, 0.25) inset;
@@ -74,7 +74,7 @@ body > * {
     box-shadow: 0 0 26px -6px rgba(248, 113, 113, 0.55), 0 0 0 1px rgba(248, 113, 113, 0.3) inset;
   }
   .text-glow {
-    text-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+    text-shadow: 0 0 18px rgba(59, 130, 246, 0.45);
   }
   /* Terminal-style uppercase microcopy. */
   .label-term {
@@ -109,7 +109,7 @@ body > * {
 
 /* Visible keyboard-focus ring everywhere, tuned to the neon theme. */
 :focus-visible {
-  outline: 2px solid rgba(34, 211, 238, 0.65);
+  outline: 2px solid rgba(59, 130, 246, 0.7);
   outline-offset: 2px;
   border-radius: 4px;
 }

@@ -27,7 +27,7 @@ export function SavedAnalysesPanel({
     >
       <div className="space-y-2">
         {items.map(({ summary: s }) => (
-          <div key={s.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3 transition hover:border-cyan-400/25 hover:bg-white/[0.04]">
+          <div key={s.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3 transition hover:border-blue-400/25 hover:bg-white/[0.04]">
             <button type="button" onClick={() => onReopen(items.find((i) => i.summary.id === s.id)!)} className="min-w-0 flex-1 text-left">
               <div className="flex items-center gap-2">
                 <span className="truncate text-sm font-medium text-slate-100">{s.address}</span>

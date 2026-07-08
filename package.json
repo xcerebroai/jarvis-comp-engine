@@ -5,13 +5,16 @@
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/build.mjs",
-    "start": "next start",
+    "start": "prisma migrate deploy && next start",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "recon": "tsx scripts/recon.ts"
+    "recon": "tsx scripts/recon.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "@prisma/client": "^6.19.3",
     "next": "16.2.10",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -23,6 +26,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.0",
     "typescript": "^5",

@@ -238,6 +238,12 @@ export interface AnalysisResult {
   confidence: ConfidenceScore;
   recommendation: StrategyRecommendation;
   memo: DealMemo;
+  /**
+   * Optional Claude-written prose version of the memo. Prose only — every
+   * number comes from `memo` (the deterministic engine); absent when the
+   * Claude API is not configured or the call fails.
+   */
+  memoProse?: string;
   dataSources: DataSource[];
   /** Per-run provenance audit — one row per data source used. */
   sourceAudit: SourceAuditEntry[];
