@@ -1,48 +1,39 @@
 /**
- * ProviderStrip — a compact banner near the top of the dashboard summarizing
- * how data is being sourced right now (mock vs. real, which providers active).
+ * ProviderStrip — a live terminal-style status bar summarizing how data is
+ * sourced right now. Clicking it opens the provider settings page.
  */
 'use client';
 
+import Link from 'next/link';
 import type { ProviderStatus } from '@/lib/types';
-
-function Item({ label, value, tone = 'slate' }: { label: string; value: string; tone?: 'slate' | 'red' | 'emerald' }) {
-  const toneClass =
-    tone === 'red' ? 'text-red-700' : tone === 'emerald' ? 'text-emerald-700' : 'text-slate-700';
-  return (
-    <div>
-      <span className="text-[11px] font-medium tracking-wide text-slate-400 uppercase">{label}: </span>
-      <span className={`text-xs font-semibold ${toneClass}`}>{value}</span>
-    </div>
-  );
-}
+import { StatusPill } from './ui';
 
 export function ProviderStrip({ status }: { status: ProviderStatus }) {
   const mock = status.mockProviderEnabled;
   const real = status.providers.filter((p) => p.type !== 'mock');
-  const active = real.filter((p) => p.active).map((p) => p.name);
-  const missing = real.filter((p) => !p.configured).map((p) => p.name);
-
-  const wrap = mock
-    ? 'border-red-200 bg-red-50'
-    : status.realProvidersConfigured
-      ? 'border-emerald-200 bg-emerald-50'
-      : 'border-amber-200 bg-amber-50';
+  const active = real.filter((p) => p.active).map((p) => p.name.replace(/ (Provider|Data)$/, ''));
 
   return (
-    <div className={`flex flex-wrap items-center gap-x-6 gap-y-1.5 rounded-xl border px-4 py-2.5 ${wrap}`}>
-      <Item label="Provider Mode" value={mock ? 'Mock Data' : 'Real Data'} tone={mock ? 'red' : 'emerald'} />
+    <Link
+      href="/settings/providers"
+      className="group flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5 backdrop-blur-sm transition hover:border-cyan-400/30"
+      title="Open provider settings"
+    >
+      <StatusPill label="Provider Mode" value={mock ? 'Mock Data' : 'Real Data'} tone={mock ? 'amber' : 'emerald'} />
       {mock ? (
-        <>
-          <Item label="Real Providers" value={status.realProvidersConfigured ? 'Configured (inactive in mock mode)' : 'Not Configured'} />
-          <Item label="Data Confidence" value="Testing Only" tone="red" />
-        </>
+        <StatusPill
+          label="Real Providers"
+          value={status.realProvidersConfigured ? 'Configured (inactive)' : 'Not Configured'}
+          tone="slate"
+        />
       ) : (
-        <>
-          <Item label="Active Providers" value={active.length ? active.join(', ') : 'None'} tone={active.length ? 'emerald' : 'red'} />
-          <Item label="Missing Providers" value={missing.length ? missing.join(', ') : 'None'} />
-        </>
+        <StatusPill label="Active" value={active.length ? active.join(', ') : 'None'} tone={active.length ? 'emerald' : 'red'} />
       )}
-    </div>
+      <StatusPill label="Data Confidence" value={mock ? 'Testing Only' : 'Live'} tone={mock ? 'red' : 'cyan'} />
+      <StatusPill label="No-Scraping Boundary" value="Active" tone="emerald" />
+      <span className="ml-auto hidden text-xs font-medium text-cyan-300/70 transition group-hover:text-cyan-300 sm:block">
+        Provider Status →
+      </span>
+    </Link>
   );
 }

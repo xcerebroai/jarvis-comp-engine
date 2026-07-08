@@ -1,7 +1,7 @@
 /**
- * Intake form — the FIRST thing the user sees. Address + repairs are the
- * primary inputs; seller/debt info is optional. Emits the exact AnalysisInput
- * shape the pipeline consumes.
+ * Intake form — the acquisition control panel. Address + repairs are the primary
+ * inputs; seller/debt and manual comps are optional. Emits the exact
+ * AnalysisInput shape the pipeline consumes. (Styling only — logic unchanged.)
  */
 'use client';
 
@@ -25,6 +25,7 @@ import {
   REPAIR_CATEGORY_LABEL,
   REPAIR_LEVEL_LABEL,
 } from '@/lib/labels';
+import { BoltIcon, DatabaseIcon, DollarIcon, LocationIcon, ToolsIcon } from './icons';
 import { Field, Section, Select, TextArea, TextInput } from './ui';
 
 const toNum = (s: string): number | undefined => {
@@ -55,6 +56,8 @@ function toCompInput(row: CompRow): CompInput {
     notes: row.notes?.trim() || undefined,
   };
 }
+
+const linkBtn = 'text-sm font-medium text-cyan-300 transition hover:text-cyan-200';
 
 export function IntakeForm({
   loading,
@@ -132,7 +135,13 @@ export function IntakeForm({
   return (
     <div className="space-y-4">
       {/* SECTION 1 — Address */}
-      <Section step={1} title="Property Address" subtitle="Paste a full address, or fill the fields below.">
+      <Section
+        step={1}
+        icon={<LocationIcon />}
+        tone="cyan"
+        title="Property Address"
+        subtitle="Start with an address. The system pulls from configured legal data providers, or uses mock mode for testing."
+      >
         <div className="space-y-3">
           <Field label="Full address" hint="e.g. 123 Main St, Austin, TX 78701">
             <TextInput value={fullAddress} onChange={(e) => setFullAddress(e.target.value)} placeholder="123 Main St, Austin, TX 78701" />
@@ -154,8 +163,14 @@ export function IntakeForm({
         </div>
       </Section>
 
-      {/* SECTION 2 — Repairs */}
-      <Section step={2} title="Repair Information" subtitle="Start with the overall level. Itemize only if you know specifics.">
+      {/* SECTION 2 — Repair Intel */}
+      <Section
+        step={2}
+        icon={<ToolsIcon />}
+        tone="violet"
+        title="Repair Intel"
+        subtitle="Repair detail directly affects ARV confidence, risk buffer, and offer recommendations."
+      >
         <div className="space-y-4">
           <Field label="Overall rehab level">
             <div className="flex flex-wrap gap-2">
@@ -166,8 +181,8 @@ export function IntakeForm({
                   onClick={() => setRehabLevel(rehabLevel === lvl ? '' : lvl)}
                   className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
                     rehabLevel === lvl
-                      ? 'border-indigo-600 bg-indigo-600 text-white'
-                      : 'border-slate-300 bg-white text-slate-700 hover:border-indigo-400'
+                      ? 'border-cyan-400/60 bg-cyan-400/15 text-cyan-100 glow-cyan'
+                      : 'border-white/12 bg-white/[0.03] text-slate-300 hover:border-cyan-400/40'
                   }`}
                 >
                   {REHAB_LEVEL_LABEL[lvl]}
@@ -185,11 +200,7 @@ export function IntakeForm({
             </Field>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowItemized((s) => !s)}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
-          >
+          <button type="button" onClick={() => setShowItemized((s) => !s)} className={linkBtn}>
             {showItemized ? '− Hide' : '+ Add'} itemized repair categories (optional)
           </button>
 
@@ -197,7 +208,7 @@ export function IntakeForm({
             <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
               {REPAIR_CATEGORIES.map((cat) => (
                 <div key={cat} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-700">{REPAIR_CATEGORY_LABEL[cat]}</span>
+                  <span className="text-sm text-slate-300">{REPAIR_CATEGORY_LABEL[cat]}</span>
                   <div className="w-40">
                     <Select value={categories[cat]} onChange={(v) => setCategories((p) => ({ ...p, [cat]: v as RepairLevel }))}>
                       {REPAIR_LEVELS.map((l) => (
@@ -212,13 +223,15 @@ export function IntakeForm({
         </div>
       </Section>
 
-      {/* SECTION 3 — Seller / Debt (optional) */}
-      <Section step={3} title="Seller / Debt Info" subtitle="Optional — unlocks subject-to and creative-finance analysis.">
-        <button
-          type="button"
-          onClick={() => setShowSeller((s) => !s)}
-          className="mb-3 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-        >
+      {/* SECTION 3 — Seller / Debt Intel */}
+      <Section
+        step={3}
+        icon={<DollarIcon />}
+        tone="emerald"
+        title="Seller / Debt Intel"
+        subtitle="Debt and payment info unlocks subject-to and creative finance analysis."
+      >
+        <button type="button" onClick={() => setShowSeller((s) => !s)} className={`mb-3 ${linkBtn}`}>
           {showSeller ? '− Hide' : '+ Add'} seller / debt details
         </button>
         {showSeller && (
@@ -253,25 +266,31 @@ export function IntakeForm({
         )}
       </Section>
 
-      {/* SECTION 4 — Manual comps (fallback) */}
-      <Section step={4} title="Manual Comps" subtitle="Fallback only — used when no comparable-sales provider is configured.">
+      {/* SECTION 4 — Manual Comps Fallback */}
+      <Section
+        step={4}
+        icon={<DatabaseIcon />}
+        tone="cyan"
+        title="Manual Comps Fallback"
+        subtitle="Fallback only — use manual comps when provider comps are unavailable, or to override/support the analysis."
+      >
         <button
           type="button"
           onClick={() => {
             setShowManualComps((s) => !s);
             if (!showManualComps && manualComps.length === 0) addComp();
           }}
-          className="mb-3 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+          className={`mb-3 ${linkBtn}`}
         >
           {showManualComps ? '− Hide' : '+ Add'} manual comps as fallback
         </button>
         {showManualComps && (
           <div className="space-y-4">
             {manualComps.map((row, i) => (
-              <div key={i} className="rounded-lg border border-slate-200 p-3">
+              <div key={i} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500">Comp {i + 1}</span>
-                  <button type="button" onClick={() => removeComp(i)} className="text-xs text-slate-400 hover:text-red-600">
+                  <span className="label-term">Comp {i + 1}</span>
+                  <button type="button" onClick={() => removeComp(i)} className="text-xs text-slate-400 transition hover:text-red-300">
                     Remove
                   </button>
                 </div>
@@ -303,7 +322,7 @@ export function IntakeForm({
                 </div>
               </div>
             ))}
-            <button type="button" onClick={addComp} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+            <button type="button" onClick={addComp} className={linkBtn}>
               + Add another comp
             </button>
           </div>
@@ -311,17 +330,22 @@ export function IntakeForm({
       </Section>
 
       {/* SECTION 5 — Analyze */}
-      <button
-        type="button"
-        disabled={!canSubmit || loading}
-        onClick={submit}
-        className="w-full rounded-xl bg-indigo-600 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-      >
-        {loading ? 'Analyzing…' : 'Analyze Property'}
-      </button>
-      {!canSubmit && (
-        <p className="text-center text-xs text-slate-400">Enter an address to enable analysis.</p>
-      )}
+      <div className="pt-1">
+        <button
+          type="button"
+          disabled={!canSubmit || loading}
+          onClick={submit}
+          className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-cyan-400/50 bg-gradient-to-r from-cyan-500/20 via-cyan-400/15 to-violet-500/20 py-4 text-base font-bold text-cyan-50 transition glow-cyan hover:from-cyan-500/30 hover:to-violet-500/30 disabled:cursor-not-allowed disabled:border-white/10 disabled:from-white/5 disabled:to-white/5 disabled:text-slate-500 disabled:shadow-none"
+        >
+          <BoltIcon className="h-5 w-5" />
+          {loading ? 'Analyzing…' : 'Analyze Property'}
+        </button>
+        <p className="mt-2 text-center text-xs text-slate-500">
+          {canSubmit
+            ? 'Runs comps, ARV, repairs, risk, confidence, and all offer strategies.'
+            : 'Enter an address to run acquisition analysis.'}
+        </p>
+      </div>
     </div>
   );
 }
