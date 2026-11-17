@@ -25,7 +25,7 @@ export const futureMlsResoProvider: ComparableSalesProvider = {
     // licensed MLS/RESO Web API documentation before enabling. Do NOT guess
     // endpoints. No scraping. No browser automation.
     throw new Error(
-      'MLS/RESO comps endpoint mapping is not implemented yet — verify against your licensed MLS/RESO Web API docs before enabling.',
+      'Comparable sales are unavailable from this data source.',
     );
   },
 };

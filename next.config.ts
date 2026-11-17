@@ -5,7 +5,7 @@ import type { NextConfig } from "next";
  *  - Default (local dev / server deploy): normal Next.js with API routes.
  *  - GitHub Pages static export: set NEXT_PUBLIC_GITHUB_PAGES=true. Produces a
  *    fully static `out/` served under /jarvis-comp-engine. No API routes — the
- *    browser runs the analysis client-side against the mock provider.
+ *    static site links visitors to Jarvis Comps.
  */
 const isGithubPages = process.env.NEXT_PUBLIC_GITHUB_PAGES === "true";
 const repo = "jarvis-comp-engine";

@@ -7,6 +7,7 @@
 'use client';
 
 import { useState } from 'react';
+import { isCustomerAnalysis } from '@/lib/savedAnalyses';
 import type {
   AnalysisResult,
   CompDisposition,
@@ -32,7 +33,7 @@ import {
   ToolsIcon,
   WarningIcon,
 } from './icons';
-import { Badge, Card, CommandCard, MetricCard, ScoreBar, Section, Stat, WarningBanner } from './ui';
+import { Badge, Card, CommandCard, MetricCard, ScoreBar, Section, Stat } from './ui';
 
 const confTone = (s: number) => (s >= 70 ? 'emerald' : s >= 45 ? 'amber' : 'red');
 
@@ -43,25 +44,8 @@ const DISPOSITION_TONE: Record<CompDisposition, string> = {
   rejected: 'text-slate-400 bg-white/5 border-white/10',
 };
 
-// Inlined at build time; true only in the GitHub Pages static demo.
-const IS_PAGES = process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true';
-
-function MockBanner() {
-  return (
-    <WarningBanner
-      tone="red"
-      icon={<WarningIcon className="h-5 w-5" />}
-      title={IS_PAGES ? 'Mock Data — Static Public Demo' : 'Mock Data Mode'}
-    >
-      {IS_PAGES
-        ? 'This is a static public demo using mock data only — every property, comp, and dollar figure below is simulated. '
-        : 'This analysis is using simulated property/comparable data for testing. '}
-      <span className="font-semibold">Do not use this valuation for real offers.</span>
-    </WarningBanner>
-  );
-}
-
 export function ResultsDashboard({ result }: { result: AnalysisResult }) {
+  if (!isCustomerAnalysis(result)) return null;
   const { subject, arv, repairEstimate, comps, offers, risk, confidence, recommendation, memo } = result;
   const f = subject.facts;
 
@@ -72,9 +56,6 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
 
   return (
     <div className="space-y-4">
-      {/* Top-level mock-data warning */}
-      {result.usedMockProvider && <MockBanner />}
-
       {/* Warnings banner */}
       {result.warnings.length > 0 && (
         <Card className="border-amber-400/30 bg-amber-500/[0.06] p-4">
@@ -101,15 +82,10 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
         <MetricCard
           label="Confidence"
           value={`${confidence.score}/100`}
-          sub={confidenceWord(confidence.score, result.usedMockProvider)}
+          sub={confidenceWord(confidence.score)}
           tone={confTone(confidence.score)}
         />
-        <MetricCard
-          label="Provider Mode"
-          value={IS_PAGES ? 'Demo' : result.usedMockProvider ? 'Mock Data' : 'Real Data'}
-          sub={IS_PAGES ? 'Mock data only' : result.usedMockProvider ? 'Testing only' : 'Live'}
-          tone={result.usedMockProvider ? 'amber' : 'emerald'}
-        />
+        <MetricCard label="Qualified Comps" value={String(qualified.length)} tone="blue" />
       </div>
 
       {/* 1 — Property Snapshot */}
@@ -158,9 +134,6 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
         )}
       </Section>
 
-      {/* Mock warning — directly above the ARV. */}
-      {result.usedMockProvider && <MockBanner />}
-
       {/* 3 — Conservative ARV */}
       <Section step="03" icon={<ShieldIcon />} tone="emerald" title="Conservative ARV">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -180,9 +153,6 @@ export function ResultsDashboard({ result }: { result: AnalysisResult }) {
           </ul>
         )}
       </Section>
-
-      {/* Mock warning — directly above the comp table. */}
-      {result.usedMockProvider && <MockBanner />}
 
       {/* 4 — Comparable Sales */}
       <Section
@@ -386,15 +356,10 @@ function DealMemoBlock({ memo, memoProse }: { memo: AnalysisResult['memo']; memo
         </button>
       }
     >
-      {IS_PAGES && (
-        <p className="mb-3 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          Static public demo — this memo was generated from mock data only and is not usable for a real offer.
-        </p>
-      )}
       <p className="mb-3 text-sm font-medium text-slate-200">{memo.headline}</p>
       {memoProse && (
         <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-          <div className="label-term mb-1">Analyst Narrative (AI prose — numbers from the deterministic engine)</div>
+          <div className="label-term mb-1">Analyst Narrative</div>
           <p className="text-sm whitespace-pre-line text-slate-200">{memoProse}</p>
         </div>
       )}
@@ -432,10 +397,10 @@ function DataSourcesBlock({ result }: { result: AnalysisResult }) {
       icon={<DatabaseIcon />}
       tone="violet"
       title="Data Sources & Providers"
-      subtitle="Every number above traces back to a source listed here. Rows marked MOCK are simulated — testing only, never real market data."
+      subtitle="Review the property records and comparable sales used in this analysis."
     >
       <div className="space-y-1.5">
-        {providerStatus.providers.map((p) => (
+        {providerStatus.providers.filter((p) => p.active && p.type !== 'mock').map((p) => (
           <div key={`${p.type}-${p.name}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
             <div className="min-w-0">
               <div className="truncate text-sm font-medium text-slate-200">{p.name}</div>
@@ -443,9 +408,7 @@ function DataSourcesBlock({ result }: { result: AnalysisResult }) {
             </div>
             <div className="flex shrink-0 gap-1.5">
               {p.active && <Badge className="border-emerald-400/30 bg-emerald-400/10 text-emerald-300">active</Badge>}
-              <Badge className={p.configured ? 'border-blue-400/30 bg-blue-400/10 text-blue-300' : 'border-white/10 bg-white/5 text-slate-400'}>
-                {p.configured ? 'configured' : 'not configured'}
-              </Badge>
+
             </div>
           </div>
         ))}
@@ -459,7 +422,6 @@ function DataSourcesBlock({ result }: { result: AnalysisResult }) {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium text-slate-200">{a.provider}</span>
                 <div className="flex gap-1.5">
-                  {a.mock && <Badge className="border-red-400/30 bg-red-400/10 text-red-300">mock</Badge>}
                   <Badge className="border-white/10 bg-white/5 text-slate-300">{a.sourceType.replace('_', ' ')}</Badge>
                 </div>
               </div>

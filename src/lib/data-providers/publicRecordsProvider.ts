@@ -27,7 +27,7 @@ export const futureCountyRecordsProvider: PublicRecordsProvider = {
     // owner/lien fields where legally permitted. No scraping of county portals
     // that prohibit automated access.
     throw new Error(
-      'County records endpoint mapping is not implemented yet — verify against official compliant public-records API docs before enabling.',
+      'County records are unavailable from this data source.',
     );
   },
 };

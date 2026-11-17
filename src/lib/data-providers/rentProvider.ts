@@ -23,7 +23,7 @@ export const futureRentProvider: RentProvider = {
     // response→RentEstimate mapping MUST be verified against the official rent
     // provider documentation before enabling. Do NOT guess endpoints.
     throw new Error(
-      'Rent provider endpoint mapping is not implemented yet — verify against official provider docs before enabling.',
+      'Rent estimates are unavailable from this data source.',
     );
   },
 };

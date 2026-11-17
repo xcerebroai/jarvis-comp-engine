@@ -39,13 +39,13 @@ const UNCONFIGURED = 'unconfigured';
 
 function inertResponse<T>(sourceType: string, data: T, ctx: ProviderContext): ProviderResponse<T> {
   return {
-    providerName: 'Not configured',
+    providerName: 'No records available',
     sourceType,
     isMock: false,
     fetchedAt: ctx.asOf,
     confidence: 'low',
     data,
-    warnings: [`No ${sourceType} provider is configured — this slot supplied no data.`],
+    warnings: [`No ${sourceType.replace(/_/g, ' ')} records are available.`],
   };
 }
 

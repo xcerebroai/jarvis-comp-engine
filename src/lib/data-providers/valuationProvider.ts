@@ -26,7 +26,7 @@ export const futureValuationProvider: ValuationProvider = {
     // provider (ATTOM AVM) documentation before enabling. External valuations
     // are supporting context only — never the final ARV.
     throw new Error(
-      'Valuation provider endpoint mapping is not implemented yet — verify against official AVM API docs before enabling.',
+      'Value estimates are unavailable from this data source.',
     );
   },
 };

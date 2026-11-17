@@ -137,7 +137,7 @@ export function estimateRepairs(
   // Warnings.
   if ((rehabLevel === 'heavy' || rehabLevel === 'full_gut') && !hasItemization) {
     warnings.push(
-      `${rehabLevel === 'full_gut' ? 'Full-gut' : 'Heavy'} rehab with little itemized detail — treat this number as a placeholder and get contractor bids.`,
+      `${rehabLevel === 'full_gut' ? 'Full-gut' : 'Heavy'} rehab with little itemized detail — confirm this estimate with contractor bids.`,
     );
   }
   if (unknownCategories.length > 0) {
@@ -149,7 +149,7 @@ export function estimateRepairs(
     warnings.push('ARV depends heavily on renovation quality and finish level for a full gut.');
   }
   if (!hasItemization && !input.rehabLevel) {
-    warnings.push('No repair scope entered — used a light-rehab placeholder.');
+    warnings.push('No repair scope entered — estimate assumes light rehabilitation.');
   }
 
   return {

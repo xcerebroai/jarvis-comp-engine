@@ -27,6 +27,13 @@ export interface SavedAnalysis {
   result: AnalysisResult;
 }
 
+/** Keep legacy synthetic results out of customer views and exports without deleting them. */
+export function isCustomerAnalysis(result: AnalysisResult): boolean {
+  return result.usedMockProvider === false
+    && !result.sourceAudit?.some((source) => source.mock)
+    && !result.dataSources?.includes('mock_provider');
+}
+
 const STORAGE_KEY = 'jarvis.savedAnalyses.v1';
 const MAX_ITEMS = 50;
 
