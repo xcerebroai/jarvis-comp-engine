@@ -5,7 +5,7 @@
  *
  * GitHub Pages static export (`NEXT_PUBLIC_GITHUB_PAGES=true npm run build`):
  * temporarily excludes `src/app/api` (static export has no server runtime — the
- * browser runs analysis client-side via runClientMockAnalysis), runs the export,
+ * static site links visitors to Jarvis Comps), runs the export,
  * then adds `.nojekyll` so GitHub Pages serves the `_next/` assets untouched.
  * The api directory is always restored, even if the build fails.
  */

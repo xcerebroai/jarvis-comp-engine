@@ -3,12 +3,11 @@
  * deploy). Provider calls (and, later, licensed-API keys) live on the server.
  *
  * NOTE: the GitHub Pages STATIC EXPORT excludes this route entirely (there is
- * no server there); the browser runs the same pipeline via runClientMockAnalysis
- * against the mock provider. See scripts/build.mjs and next.config.ts.
+ * no server there); the static entry page links visitors to Jarvis Comps. See scripts/build.mjs and next.config.ts.
  */
 import { NextResponse } from 'next/server';
 import { runPropertyAnalysis } from '@/lib/analysis/runPropertyAnalysis';
-import { getProviderStatus, NO_PROVIDER_MESSAGE } from '@/lib/data-providers/providerStatus';
+import { getProviderStatus } from '@/lib/data-providers/providerStatus';
 import { claudeConfigured, generateMemoProse } from '@/lib/claude';
 import type { AnalysisInput } from '@/lib/types';
 
@@ -36,7 +35,7 @@ export async function POST(req: Request) {
   // off and no real provider is configured.
   const status = getProviderStatus();
   if (!status.mockProviderEnabled && !status.realProvidersConfigured) {
-    return NextResponse.json({ error: NO_PROVIDER_MESSAGE }, { status: 503 });
+    return NextResponse.json({ error: 'Property analysis is unavailable right now. Please try again later.' }, { status: 503 });
   }
 
   try {

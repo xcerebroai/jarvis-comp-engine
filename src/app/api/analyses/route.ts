@@ -5,13 +5,13 @@
  */
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { summarizeResult } from '@/lib/savedAnalyses';
+import { isCustomerAnalysis, summarizeResult } from '@/lib/savedAnalyses';
 import type { AnalysisResult } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const rows = await prisma.analysis.findMany({ orderBy: { createdAt: 'desc' }, take: 100 });
+  const rows = await prisma.analysis.findMany({ where: { usedMockProvider: false }, orderBy: { createdAt: 'desc' }, take: 100 });
   const items = rows.map((row) => ({
     summary: {
       id: row.id,
@@ -29,7 +29,7 @@ export async function GET() {
   }));
   // recommendedLabel lives inside the stored result — restore the human label.
   for (const item of items) item.summary.recommendedLabel = item.result.recommendation.label;
-  return NextResponse.json({ items });
+  return NextResponse.json({ items: items.filter((item) => isCustomerAnalysis(item.result)) });
 }
 
 export async function POST(req: Request) {
@@ -42,6 +42,10 @@ export async function POST(req: Request) {
   const { id, createdAt, result } = body;
   if (!id || !createdAt || !result?.arv || !result?.recommendation) {
     return NextResponse.json({ error: 'id, createdAt, and a full result are required.' }, { status: 400 });
+  }
+
+  if (!isCustomerAnalysis(result)) {
+    return NextResponse.json({ error: 'This analysis cannot be saved. Please run a new analysis.' }, { status: 400 });
   }
 
   const summary = summarizeResult(result, id, createdAt);

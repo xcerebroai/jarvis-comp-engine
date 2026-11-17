@@ -3,6 +3,7 @@ import { runPropertyAnalysis } from './analysis/runPropertyAnalysis';
 import { createMockBundle } from './data-providers/mockProvider';
 import {
   deserializeSaved,
+  isCustomerAnalysis,
   serializeSaved,
   summarizeResult,
   type SavedAnalysis,
@@ -41,5 +42,19 @@ describe('savedAnalyses serialization', () => {
     expect(deserializeSaved(null)).toEqual([]);
     expect(deserializeSaved('not json{')).toEqual([]);
     expect(deserializeSaved(JSON.stringify([{ nope: true }]))).toEqual([]);
+  });
+});
+
+
+describe('customer analysis eligibility', () => {
+  it('excludes synthetic results even when a legacy top-level flag is inconsistent', async () => {
+    const result = await runPropertyAnalysis(
+      { address: { fullAddress: '1 Test St, Dallas, TX 75201' }, repairs: { rehabLevel: 'light' } },
+      { asOf, providers: createMockBundle() },
+    );
+    expect(isCustomerAnalysis(result)).toBe(false);
+    expect(isCustomerAnalysis({ ...result, usedMockProvider: false })).toBe(false);
+    expect(isCustomerAnalysis({ ...result, usedMockProvider: false, sourceAudit: [] })).toBe(false);
+    expect(isCustomerAnalysis({ ...result, usedMockProvider: false, sourceAudit: [], dataSources: [] })).toBe(true);
   });
 });

@@ -23,7 +23,7 @@ export function SavedAnalysesPanel({
       icon={<ArchiveIcon />}
       tone="violet"
       title="Saved Analyses"
-      subtitle={`${items.length} saved locally on this device.`}
+      subtitle={`${items.length} saved analyses.`}
     >
       <div className="space-y-2">
         {items.map(({ summary: s }) => (
@@ -31,11 +31,7 @@ export function SavedAnalysesPanel({
             <button type="button" onClick={() => onReopen(items.find((i) => i.summary.id === s.id)!)} className="min-w-0 flex-1 text-left">
               <div className="flex items-center gap-2">
                 <span className="truncate text-sm font-medium text-slate-100">{s.address}</span>
-                {s.usedMockProvider ? (
-                  <Badge className="border-red-400/30 bg-red-400/10 text-red-300">mock</Badge>
-                ) : (
-                  <Badge className="border-emerald-400/30 bg-emerald-400/10 text-emerald-300">real</Badge>
-                )}
+
               </div>
               <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-slate-400">
                 <span>ARV {money(s.conservativeArv)}</span>

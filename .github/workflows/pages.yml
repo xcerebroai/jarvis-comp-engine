@@ -5,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# No secrets are used. The static demo runs in mock mode only.
+# No secrets are used. The static site links visitors to Jarvis Comps.
 permissions:
   contents: read
   pages: write
@@ -43,7 +43,7 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Build static export (mock mode)
+      - name: Build static site
         run: NEXT_PUBLIC_GITHUB_PAGES=true npm run build
 
       - name: Upload Pages artifact

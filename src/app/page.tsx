@@ -1,3 +1,4 @@
+import { ProductEntry } from '@/components/ProductEntry';
 import { DealWorkbench } from '@/components/DealWorkbench';
 import { getProviderStatus } from '@/lib/data-providers/providerStatus';
 
@@ -7,5 +8,6 @@ import { getProviderStatus } from '@/lib/data-providers/providerStatus';
 export const dynamic = 'force-static';
 
 export default function Home() {
+  if (process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true') return <ProductEntry />;
   return <DealWorkbench providerStatus={getProviderStatus()} />;
 }

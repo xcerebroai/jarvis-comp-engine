@@ -9,11 +9,7 @@ import Link from 'next/link';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { AnalysisInput, AnalysisResult, ProviderStatus } from '@/lib/types';
 import {
-  addSaved,
-  getSavedSnapshot,
-  getServerSavedSnapshot,
-  removeSaved,
-  subscribeSaved,
+  isCustomerAnalysis,
   type SavedAnalysis,
 } from '@/lib/savedAnalyses';
 import {
@@ -22,8 +18,8 @@ import {
   getServerOnboardingSnapshot,
   subscribeOnboarding,
 } from '@/lib/onboarding';
-import { ArchiveIcon, HelpIcon, PlugIcon, ShieldIcon, SparkIcon, WarningIcon } from './icons';
-import { GlowIcon, StatusPill, WarningBanner } from './ui';
+import { ArchiveIcon, HelpIcon, PlugIcon, ShieldIcon, SparkIcon } from './icons';
+import { GlowIcon, StatusPill } from './ui';
 import { IntakeForm } from './IntakeForm';
 import { OnboardingModal } from './OnboardingModal';
 import { ProviderStrip } from './ProviderStrip';
@@ -41,30 +37,21 @@ function scrollToResults() {
   });
 }
 
-// GitHub Pages static demo: no server, run analysis in-browser on the mock.
-const IS_PAGES = process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true';
-
 export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStatus }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  // Persistence: SQLite via the server API in real mode; localStorage only in
-  // the static Pages demo (which has no server).
   const [serverSaved, setServerSaved] = useState<SavedAnalysis[]>([]);
-  const localSaved = useSyncExternalStore(subscribeSaved, getSavedSnapshot, getServerSavedSnapshot);
-  const saved = IS_PAGES ? localSaved : serverSaved;
+  const saved = serverSaved.filter((item) => isCustomerAnalysis(item.result));
   const onboardingDismissed = useSyncExternalStore(
     subscribeOnboarding,
     getOnboardingSnapshot,
     getServerOnboardingSnapshot,
   );
 
-  const mock = providerStatus.mockProviderEnabled;
-
   useEffect(() => {
-    if (IS_PAGES) return;
     let alive = true;
     fetch('/api/analyses')
       .then((r) => (r.ok ? r.json() : { items: [] }))
@@ -82,21 +69,15 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
     setError(null);
     setSavedId(null);
     try {
-      let data: AnalysisResult;
-      if (IS_PAGES) {
-        // Static demo: run the exact same pure pipeline client-side (mock only).
-        const { runClientMockAnalysis } = await import('@/lib/analysis/runClientMockAnalysis');
-        data = await runClientMockAnalysis(input);
-      } else {
-        const res = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(input),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error ?? 'Analysis failed.');
-        data = json as AnalysisResult;
-      }
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error ?? 'Analysis failed.');
+      const data = json as AnalysisResult;
+      if (!isCustomerAnalysis(data)) throw new Error('This analysis is unavailable. Please run a new analysis.');
       setResult(data);
       scrollToResults();
     } catch (e) {
@@ -108,25 +89,22 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
   }
 
   async function handleSave() {
-    if (!result) return;
+    if (!result || !isCustomerAnalysis(result)) return;
     const id = newId();
     const createdAt = new Date().toISOString();
-    if (IS_PAGES) {
-      addSaved(result, id, createdAt);
-    } else {
-      const res = await fetch('/api/analyses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, createdAt, result }),
-      });
-      if (!res.ok) return;
-      const list = await fetch('/api/analyses').then((r) => r.json());
-      setServerSaved(list.items ?? []);
-    }
+    const res = await fetch('/api/analyses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, createdAt, result }),
+    });
+    if (!res.ok) return;
+    const list = await fetch('/api/analyses').then((r) => r.json());
+    setServerSaved(list.items ?? []);
     setSavedId(id);
   }
 
   function handleReopen(item: SavedAnalysis) {
+    if (!isCustomerAnalysis(item.result)) return;
     setResult(item.result);
     setSavedId(item.summary.id);
     setError(null);
@@ -134,12 +112,8 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
   }
 
   async function handleDelete(id: string) {
-    if (IS_PAGES) {
-      removeSaved(id);
-    } else {
-      await fetch(`/api/analyses/${id}`, { method: 'DELETE' });
-      setServerSaved((prev) => prev.filter((s) => s.summary.id !== id));
-    }
+    await fetch(`/api/analyses/${id}`, { method: 'DELETE' });
+    setServerSaved((prev) => prev.filter((s) => s.summary.id !== id));
     if (savedId === id) setSavedId(null);
   }
 
@@ -179,34 +153,21 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
               <Link
                 href="/settings/providers"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.03] px-2.5 py-1.5 text-xs font-medium text-slate-200 transition hover:border-violet-400/40 hover:text-violet-200 sm:px-3"
-                aria-label="Provider Settings"
+                aria-label="Data Sources"
               >
-                <PlugIcon className="h-4 w-4" /> <span className="hidden sm:inline">Provider Settings</span>
+                <PlugIcon className="h-4 w-4" /> <span className="hidden sm:inline">Data Sources</span>
               </Link>
             </div>
           </div>
 
           {/* Status pills */}
           <div className="mt-6 flex flex-wrap gap-2">
-            <StatusPill label="Provider Mode" value={mock ? 'Mock Data' : 'Real Data'} tone={mock ? 'amber' : 'emerald'} />
-            <StatusPill label="Data Confidence" value={mock ? 'Testing Only' : 'Live'} tone={mock ? 'red' : 'blue'} />
             <StatusPill label="Saved Analyses" value={String(saved.length)} tone="violet" />
-            <StatusPill label="No-Scraping Boundary" value="Active" tone="emerald" />
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-        {IS_PAGES && (
-          <div className="mb-4">
-            <WarningBanner tone="amber" icon={<WarningIcon className="h-5 w-5" />} title="Static Public Demo — Mock Data Only">
-              This hosted version runs fully in your browser using simulated property and comparable
-              data. Nothing here reflects a real market.{' '}
-              <span className="font-semibold">Do not use these numbers for real offers.</span>
-            </WarningBanner>
-          </div>
-        )}
-
         <div className="mb-4">
           <ProviderStrip status={providerStatus} />
         </div>
@@ -265,8 +226,7 @@ export function DealWorkbench({ providerStatus }: { providerStatus: ProviderStat
       </main>
 
       <footer className="mx-auto max-w-6xl px-4 py-8 text-center text-xs text-slate-500 sm:px-6">
-        Conservative by design. No scraping — data comes from licensed providers or the mock provider. Not
-        financial, legal, tax, or investment advice.
+        Property analysis for informed decisions. Not financial, legal, tax, or investment advice.
       </footer>
 
       <OnboardingModal

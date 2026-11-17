@@ -29,7 +29,7 @@ export const futureAttomProvider: PropertyDataProvider = {
     // verified against official ATTOM API documentation before enabling. Do NOT
     // guess endpoints. No scraping. No browser automation.
     throw new Error(
-      'ATTOM property endpoint mapping is not implemented yet — verify against official ATTOM API docs before enabling.',
+      'Property records are unavailable from this data source.',
     );
   },
 };
